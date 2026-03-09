@@ -1,0 +1,34 @@
+name: Scorly
+options:
+  bundleIdPrefix: com.andrei
+settings:
+  base:
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 1.0
+    PRODUCT_NAME: Scorly
+    SWIFT_VERSION: 5.0
+packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    from: 2.0.0
+targets:
+  Scorly:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Scorly
+    dependencies:
+      - package: Supabase
+        product: Supabase
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Scorly
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        PRODUCT_BUNDLE_IDENTIFIER: com.andrei.Scorly
+    scheme:
+      testTargets: []
