@@ -1,0 +1,18 @@
+# Xcode derived data
+.derived/
+*.xcuserstate
+xcuserdata/
+
+# Claude / agent internals
+.agents/
+.claude/
+
+# Build artifacts
+build/
+DerivedData/
+
+# OS
+.DS_Store
+
+# Scripts directory (automation tooling, not app source)
+scripts/
