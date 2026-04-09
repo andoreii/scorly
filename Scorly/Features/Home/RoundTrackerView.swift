@@ -79,7 +79,6 @@ struct RoundTrackerView: View {
     @State private var showSummary = false
 
     private let holes: [CourseHole]
-    private let cr: CGFloat = 13
 
     // MARK: Supporting types
 
@@ -87,10 +86,10 @@ struct RoundTrackerView: View {
         case hit, missed, bunker, trouble
         var color: Color {
             switch self {
-            case .hit:     return Color(red: 0.486, green: 0.718, blue: 0.498)
-            case .missed:  return Color(red: 0.94, green: 0.67, blue: 0.16)
-            case .bunker:  return Color(red: 0.82, green: 0.65, blue: 0.38)
-            case .trouble: return Color(red: 0.88, green: 0.28, blue: 0.24)
+            case .hit:     return Theme.Colors.success
+            case .missed:  return Theme.Colors.warning
+            case .bunker:  return Theme.Colors.bunker
+            case .trouble: return Theme.Colors.error
             }
         }
     }
@@ -165,25 +164,36 @@ struct RoundTrackerView: View {
     }
     private var showApproach: Bool { stat.teeShot != nil && stat.teeShot != "Green" }
     private var showExtras: Bool   { holePlayed(stat) }
+    private var holeComplete: Bool { holePlayed(stat) }
 
     // MARK: Body
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(red: 0.97, green: 0.97, blue: 0.98).ignoresSafeArea()
+            Theme.Colors.canvas.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 topBar
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 12) {
+                    VStack(spacing: Theme.Spacing.sm) {
                         holeInfoCard
                         scoreCard
                         shotFlowCard
-                        if showExtras { extrasCard }
+                        if showExtras {
+                            extrasCard
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        }
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
+                    .animation(Theme.Animation.smooth, value: showExtras)
+                    .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                    .padding(.top, Theme.Spacing.sm)
                     .padding(.bottom, 108)
+                    .id(currentHoleIndex)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
+                    .animation(Theme.Animation.smooth, value: currentHoleIndex)
                 }
                 .scrollBounceBehavior(.basedOnSize)
                 .contentMargins(.top, 0, for: .scrollContent)
@@ -192,22 +202,22 @@ struct RoundTrackerView: View {
             if showDeleteConfirm {
                 DeleteRoundPopup(
                     onDelete: {
-                        withAnimation(.easeInOut(duration: 0.18)) { showDeleteConfirm = false }
+                        withAnimation(Theme.Animation.snappy) { showDeleteConfirm = false }
                         roundStore.deleteRoundAndExit()
                     },
                     onCancel: {
-                        withAnimation(.easeInOut(duration: 0.18)) { showDeleteConfirm = false }
+                        withAnimation(Theme.Animation.snappy) { showDeleteConfirm = false }
                     }
                 )
                 .zIndex(99)
                 .transition(.opacity)
-                .animation(.easeInOut(duration: 0.18), value: showDeleteConfirm)
+                .animation(Theme.Animation.snappy, value: showDeleteConfirm)
             }
 
             bottomNav
                 .background(
-                    Color(red: 0.97, green: 0.97, blue: 0.98)
-                        .shadow(color: .black.opacity(0.07), radius: 16, y: -4)
+                    Theme.Colors.canvas
+                        .shadow(color: Theme.Shadow.medium.color, radius: Theme.Shadow.medium.radius, y: -4)
                         .ignoresSafeArea(edges: .bottom)
                 )
         }
@@ -243,7 +253,7 @@ struct RoundTrackerView: View {
                 teeIndex: teeIndex,
                 currentHoleIndex: currentHoleIndex,
                 onSelectHole: { index in
-                    withAnimation(.easeInOut(duration: 0.18)) { currentHoleIndex = index }
+                    withAnimation(Theme.Animation.snappy) { currentHoleIndex = index }
                     showScorecard = false
                 }
             )
@@ -280,50 +290,52 @@ struct RoundTrackerView: View {
         HStack {
             Button(action: { roundStore.saveAndExit() }) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.title3)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                     .frame(width: 42, height: 42)
-                    .background(.white, in: Circle())
-                    .overlay(Circle().strokeBorder(.black.opacity(0.08), lineWidth: 1))
+                    .background(Theme.Colors.surface, in: Circle())
+                    .overlay(Circle().strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ScorlyPressStyle())
 
             Spacer()
 
-            VStack(spacing: 2) {
+            VStack(spacing: Theme.Spacing.xxxs) {
                 Text(course.name)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.title3)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                 Text("Hole \(hole.number) of \(holes.count)")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.4))
+                    .font(Theme.Typography.captionSmall)
+                    .foregroundStyle(Theme.Colors.textTertiary)
             }
 
             Spacer()
 
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.xs) {
                 Button(action: { showScorecard = true }) {
                     Image(systemName: "tablecells")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.title3)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                         .frame(width: 42, height: 42)
-                        .background(.white, in: Circle())
-                        .overlay(Circle().strokeBorder(.black.opacity(0.08), lineWidth: 1))
+                        .background(Theme.Colors.surface, in: Circle())
+                        .overlay(Circle().strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ScorlyPressStyle())
 
-                Button(action: { showDeleteConfirm = true }) {
+                Button(action: {
+                    withAnimation(Theme.Animation.snappy) { showDeleteConfirm = true }
+                }) {
                     Image(systemName: "trash")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.88, green: 0.28, blue: 0.24))
+                        .font(Theme.Typography.bodySemibold)
+                        .foregroundStyle(Theme.Colors.error)
                         .frame(width: 42, height: 42)
-                        .background(.white, in: Circle())
-                        .overlay(Circle().strokeBorder(.black.opacity(0.08), lineWidth: 1))
+                        .background(Theme.Colors.surface, in: Circle())
+                        .overlay(Circle().strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ScorlyPressStyle())
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, Theme.Spacing.pageHorizontal)
         .frame(height: 56)
     }
 
@@ -331,22 +343,31 @@ struct RoundTrackerView: View {
 
     private var holeInfoCard: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: cr, style: .continuous)
-                .fill(Color.black)
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Theme.Colors.accent, Theme.Colors.accentLight.opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
 
             VStack(alignment: .leading, spacing: 0) {
                 // Top row: hole number + score badge
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 0) {
                         Text("HOLE")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(Theme.Typography.captionSmall)
+                            .fontWeight(.bold)
                             .foregroundStyle(.white.opacity(0.45))
                             .kerning(1.4)
                         Text("\(hole.number)")
                             .font(.system(size: 64, weight: .black))
                             .foregroundStyle(.white)
                             .lineSpacing(0)
-                            .padding(.top, -4)
+                            .padding(.top, -Theme.Spacing.xxs)
+                            .contentTransition(.numericText(value: Double(hole.number)))
+                            .animation(Theme.Animation.bouncy, value: hole.number)
                     }
 
                     Spacer()
@@ -355,39 +376,39 @@ struct RoundTrackerView: View {
                     let score = runningScore
                     let scoreLabel = score == 0 ? "E" : (score > 0 ? "+\(score)" : "\(score)")
                     let scoreBg: Color = score < 0
-                        ? Color(red: 0.94, green: 0.78, blue: 0.10)          // under par → yellow
+                        ? Theme.Colors.warning                                // under par → yellow
                         : score == 0 ? Color.white.opacity(0.15)              // even → neutral
                         : score < playerHandicap
-                            ? Color(red: 0.486, green: 0.718, blue: 0.498)      // within handicap → green
-                            : Color(red: 0.88, green: 0.28, blue: 0.24)      // over handicap → red
+                            ? Theme.Colors.success                            // within handicap → green
+                            : Theme.Colors.error                              // over handicap → red
                     VStack(spacing: 3) {
                         Text(scoreLabel)
-                            .font(.system(size: 22, weight: .black))
+                            .font(Theme.Typography.monoLarge)
                             .foregroundStyle(.white)
                             .monospacedDigit()
-                            .contentTransition(.numericText())
-                            .animation(.easeInOut(duration: 0.15), value: score)
+                            .contentTransition(.numericText(value: Double(score)))
+                            .animation(Theme.Animation.bouncy, value: score)
                         Text("SCORE")
                             .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.white.opacity(0.45))
                             .kerning(1.2)
                     }
                     .frame(width: 60, height: 60)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(scoreBg))
-                    .animation(.easeInOut(duration: 0.15), value: scoreBg)
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(scoreBg))
+                    .animation(Theme.Animation.smooth, value: scoreBg)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 18)
+                .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                .padding(.top, Theme.Spacing.cardPadding)
 
                 // Divider
                 Rectangle()
                     .fill(Color.white.opacity(0.10))
                     .frame(height: 1)
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
+                    .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                    .padding(.top, Theme.Spacing.sm)
 
                 // Stat pills row
-                HStack(spacing: 8) {
+                HStack(spacing: Theme.Spacing.xs) {
                     holeStatPill(value: "Par \(hole.par)", icon: "flag.fill")
                     if let yds = hole.yardages[safe: teeIndex] {
                         holeStatPill(value: "\(yds) yds", icon: "arrow.up.forward")
@@ -395,25 +416,27 @@ struct RoundTrackerView: View {
                     holeStatPill(value: "Hcp \(hole.handicap)", icon: "bolt.fill")
                     holeStatPill(value: "\(stat.strokes)", icon: "figure.golf")
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Theme.Spacing.pageHorizontal)
                 .padding(.vertical, 14)
             }
         }
-        .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
+        .themeShadow(Theme.Shadow.prominent)
+        .animation(Theme.Animation.smooth, value: currentHoleIndex)
     }
 
     private func holeStatPill(value: String, icon: String) -> some View {
         HStack(spacing: 5) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .semibold))
+                .font(Theme.Typography.captionSmall)
             Text(value)
-                .font(.system(size: 12, weight: .semibold))
+                .font(Theme.Typography.captionSmall)
+                .fontWeight(.semibold)
         }
         .foregroundStyle(.white.opacity(0.75))
-        .padding(.horizontal, 10)
+        .padding(.horizontal, Theme.Spacing.xs + 2)
         .padding(.vertical, 7)
         .background(
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                 .fill(Color.white.opacity(0.10))
         )
     }
@@ -436,36 +459,36 @@ struct RoundTrackerView: View {
                             }
                         }) {
                             Image(systemName: "minus")
-                                .font(.system(size: 22, weight: .bold))
-                                .foregroundStyle(stat.strokes <= 1 ? .black.opacity(0.2) : .black)
+                                .font(Theme.Typography.title)
+                                .foregroundStyle(stat.strokes <= 1 ? Theme.Colors.textTertiary : Theme.Colors.textPrimary)
                                 .frame(width: 60, height: 60)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(Color.black.opacity(0.05))
+                                    RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                                        .fill(Theme.Colors.textPrimary.opacity(0.05))
                                 )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(ScorlyPressStyle())
                         .disabled(stat.strokes <= 1)
 
                         Text("\(stat.strokes)")
-                            .font(.system(size: 58, weight: .black))
-                            .foregroundStyle(.black)
+                            .font(Theme.Typography.display)
+                            .foregroundStyle(Theme.Colors.textPrimary)
                             .frame(maxWidth: .infinity, alignment: .center)
                             .monospacedDigit()
-                            .contentTransition(.numericText())
-                            .animation(.easeInOut(duration: 0.12), value: stat.strokes)
+                            .contentTransition(.numericText(value: Double(stat.strokes)))
+                            .animation(Theme.Animation.bouncy, value: stat.strokes)
 
                         Button(action: { holeStats[currentHoleIndex].strokes += 1 }) {
                             Image(systemName: "plus")
-                                .font(.system(size: 22, weight: .bold))
-                                .foregroundStyle(.black)
+                                .font(Theme.Typography.title)
+                                .foregroundStyle(Theme.Colors.textPrimary)
                                 .frame(width: 60, height: 60)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(Color.black.opacity(0.05))
+                                    RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                                        .fill(Theme.Colors.textPrimary.opacity(0.05))
                                 )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(ScorlyPressStyle())
                     }
 
                     // Score-to-par label for this hole
@@ -475,51 +498,57 @@ struct RoundTrackerView: View {
                     let hcpStrokes = hole.handicap <= playerHandicap ? 1 : 0
                     let adjustedDelta = holeDelta - hcpStrokes
                     let deltaColor: Color = holeDelta < 0
-                        ? Color(red: 0.72, green: 0.52, blue: 0.00)           // under par → amber
-                        : adjustedDelta <= 0 ? Color(red: 0.12, green: 0.55, blue: 0.30) // within handicap → green
-                        : holeDelta == 0 ? .black.opacity(0.35)               // even, no stroke → neutral
-                        : Color(red: 0.75, green: 0.18, blue: 0.15)           // over handicap → red
+                        ? Theme.Colors.warning                                 // under par → amber
+                        : adjustedDelta <= 0 ? Theme.Colors.success            // within handicap → green
+                        : holeDelta == 0 ? Theme.Colors.textTertiary           // even, no stroke → neutral
+                        : Theme.Colors.error                                   // over handicap → red
                     Text(deltaLabel)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(Theme.Typography.caption)
+                        .fontWeight(.semibold)
                         .foregroundStyle(deltaColor)
                         .monospacedDigit()
-                        .animation(.easeInOut(duration: 0.12), value: holeDelta)
+                        .contentTransition(.numericText(value: Double(holeDelta)))
+                        .animation(Theme.Animation.bouncy, value: holeDelta)
+                        .animation(Theme.Animation.smooth, value: deltaColor)
                 }
-                .padding(.bottom, 16)
+                .padding(.bottom, Theme.Spacing.md)
 
                 // ── Divider ───────────────────────────────────────────────
                 divLine
 
                 // ── Putts — dot picker ────────────────────────────────────
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                     sectionLabel(icon: "arrow.right.to.line", title: "Putts")
-                    HStack(spacing: 8) {
+                    HStack(spacing: Theme.Spacing.xs) {
                         ForEach(1...5, id: \.self) { n in
                             Button(action: {
                                 holeStats[currentHoleIndex].putts = stat.putts == n ? 0 : n
                             }) {
                                 Circle()
-                                    .fill(n <= stat.putts ? Color.black : Color.black.opacity(0.09))
+                                    .fill(n <= stat.putts ? Theme.Colors.accent : Theme.Colors.textPrimary.opacity(0.09))
                                     .frame(width: 36, height: 36)
                                     .overlay(
                                         Text("\(n)")
-                                            .font(.system(size: 13, weight: .bold))
-                                            .foregroundStyle(n <= stat.putts ? .white : .black.opacity(0.3))
+                                            .font(Theme.Typography.caption)
+                                            .fontWeight(.bold)
+                                            .foregroundStyle(n <= stat.putts ? .white : Theme.Colors.textTertiary)
                                     )
                             }
-                            .buttonStyle(.plain)
-                            .animation(.easeInOut(duration: 0.12), value: stat.putts)
+                            .buttonStyle(ScorlyPressStyle())
+                            .animation(Theme.Animation.snappy, value: stat.putts)
                         }
                         Spacer()
                         if stat.putts > 0 {
                             Text("\(stat.putts) putt\(stat.putts == 1 ? "" : "s")")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(.black.opacity(0.35))
+                                .font(Theme.Typography.captionSmall)
+                                .foregroundStyle(Theme.Colors.textTertiary)
+                                .contentTransition(.numericText(value: Double(stat.putts)))
+                                .animation(Theme.Animation.bouncy, value: stat.putts)
                                 .transition(.opacity)
                         }
                     }
                 }
-                .padding(.top, 16)
+                .padding(.top, Theme.Spacing.md)
             }
         }
     }
@@ -531,7 +560,7 @@ struct RoundTrackerView: View {
             VStack(alignment: .leading, spacing: 0) {
                 // ── Tee shot ──────────────────────────────────────────────
                 sectionLabel(icon: "arrow.up.right.circle.fill", title: "Tee Shot")
-                    .padding(.bottom, 10)
+                    .padding(.bottom, Theme.Spacing.xs + 2)
 
                 shotPicker(
                     isTeePar3: hole.par == 3,
@@ -542,7 +571,7 @@ struct RoundTrackerView: View {
                 )
 
                 // Tee club
-                divLine.padding(.vertical, 14)
+                divLine.padding(.vertical, Theme.Spacing.sm + 2)
                 ClubPickerButton(
                     label: "Tee Club",
                     selected: Binding(
@@ -553,27 +582,30 @@ struct RoundTrackerView: View {
 
                 // ── Approach (conditional) ────────────────────────────────
                 if showApproach {
-                    divLine.padding(.vertical, 14)
-                    sectionLabel(icon: "arrow.down.right.circle.fill", title: "Approach")
-                        .padding(.bottom, 10)
+                    VStack(alignment: .leading, spacing: 0) {
+                        divLine.padding(.vertical, Theme.Spacing.sm + 2)
+                        sectionLabel(icon: "arrow.down.right.circle.fill", title: "Approach")
+                            .padding(.bottom, Theme.Spacing.xs + 2)
 
-                    shotPicker(
-                        isTeePar3: true,
-                        stored:    stat.approach,
-                        category:  approachCategory,
-                        onCategory: { handleCategory($0, isTee: false) },
-                        onDirection: { holeStats[currentHoleIndex].approach = $0 }
-                    )
-
-                    // Approach club
-                    divLine.padding(.vertical, 14)
-                    ClubPickerButton(
-                        label: "Approach Club",
-                        selected: Binding(
-                            get: { stat.approachClub },
-                            set: { holeStats[currentHoleIndex].approachClub = $0 }
+                        shotPicker(
+                            isTeePar3: true,
+                            stored:    stat.approach,
+                            category:  approachCategory,
+                            onCategory: { handleCategory($0, isTee: false) },
+                            onDirection: { holeStats[currentHoleIndex].approach = $0 }
                         )
-                    )
+
+                        // Approach club
+                        divLine.padding(.vertical, Theme.Spacing.sm + 2)
+                        ClubPickerButton(
+                            label: "Approach Club",
+                            selected: Binding(
+                                get: { stat.approachClub },
+                                set: { holeStats[currentHoleIndex].approachClub = $0 }
+                            )
+                        )
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
         }
@@ -581,7 +613,7 @@ struct RoundTrackerView: View {
 
     // Category tap handler
     private func handleCategory(_ cat: ShotCategory, isTee: Bool) {
-        withAnimation(.easeInOut(duration: 0.18)) {
+        withAnimation(Theme.Animation.snappy) {
             if isTee {
                 if teeShotCategory == cat {
                     teeShotCategory = nil
@@ -612,7 +644,7 @@ struct RoundTrackerView: View {
         onCategory: @escaping (ShotCategory) -> Void,
         onDirection: @escaping (String) -> Void
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
             // 4 category tiles
             HStack(spacing: 6) {
                 catTile(.hit,     label: isTeePar3 ? "Green" : "Fairway",
@@ -625,18 +657,18 @@ struct RoundTrackerView: View {
                         icon: "exclamationmark.triangle.fill", selected: category == .trouble, onTap: onCategory)
             }
 
-            // Direction strip (slides in)
+            // Direction strip (slides in with spring)
             if let cat = category, cat != .hit {
                 if cat == .trouble {
                     dirStrip(label: "Water",
                              items: [("L","Left water"),("R","Right water"),("S","Short water"),("Lg","Long Water")],
                              stored: stored,
-                             color: Color(red: 0.33, green: 0.55, blue: 0.90),
+                             color: Theme.Colors.water,
                              onTap: onDirection)
                     dirStrip(label: "OB",
                              items: [("L","Out Left"),("R","Out Right"),("S","Out Short"),("Lg","Out Long")],
                              stored: stored,
-                             color: Color(red: 0.88, green: 0.28, blue: 0.24),
+                             color: Theme.Colors.error,
                              onTap: onDirection)
                 } else {
                     let items: [(String, String)] = cat == .missed
@@ -653,27 +685,29 @@ struct RoundTrackerView: View {
         Button(action: { onTap(cat) }) {
             VStack(spacing: 5) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(selected ? cat.color : .black.opacity(0.3))
+                    .font(Theme.Typography.title3)
+                    .foregroundStyle(selected ? cat.color : Theme.Colors.textTertiary)
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(selected ? .black : .black.opacity(0.45))
+                    .font(Theme.Typography.captionSmall)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(selected ? Theme.Colors.textPrimary : Theme.Colors.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 58)
             .background(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(selected ? cat.color.opacity(0.10) : Color.black.opacity(0.04))
+                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                    .fill(selected ? cat.color.opacity(0.10) : Theme.Colors.textPrimary.opacity(0.04))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                     .strokeBorder(selected ? cat.color.opacity(0.45) : Color.clear, lineWidth: 1.5)
             )
+            .scaleEffect(selected ? 1.0 : 0.96)
         }
-        .buttonStyle(.plain)
-        .animation(.easeInOut(duration: 0.14), value: selected)
+        .buttonStyle(ScorlyPressStyle())
+        .animation(Theme.Animation.snappy, value: selected)
     }
 
     private func dirStrip(label: String, items: [(String, String)],
@@ -690,17 +724,18 @@ struct RoundTrackerView: View {
                 let sel = stored == value
                 Button(action: { onTap(value) }) {
                     Text(display)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(sel ? .white : .black)
+                        .font(Theme.Typography.captionSmall)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(sel ? .white : Theme.Colors.textPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 34)
                         .background(
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                .fill(sel ? color : Color.black.opacity(0.05))
+                                .fill(sel ? color : Theme.Colors.textPrimary.opacity(0.05))
                         )
                 }
-                .buttonStyle(.plain)
-                .animation(.easeInOut(duration: 0.12), value: sel)
+                .buttonStyle(ScorlyPressStyle())
+                .animation(Theme.Animation.snappy, value: sel)
             }
         }
     }
@@ -711,7 +746,7 @@ struct RoundTrackerView: View {
         formCard {
             VStack(alignment: .leading, spacing: 0) {
                 // Auto-computed indicators
-                HStack(spacing: 8) {
+                HStack(spacing: Theme.Spacing.xs) {
                     autoChip("GIR",    active: stat.greenInReg(par: hole.par), icon: "flag.fill")
                     autoChip("FIR",    active: stat.fairwayInReg(par: hole.par), icon: "arrow.up.right")
                     autoChip("3-Putt", active: stat.threePutt, icon: "arrow.right.to.line")
@@ -724,8 +759,8 @@ struct RoundTrackerView: View {
                 let hasHazard     = stat.outOfBoundsCount > 0 || stat.hazardCount > 0
 
                 if needsUpDown || needsSandSave || hasHazard {
-                    divLine.padding(.vertical, 10)
-                    HStack(spacing: 8) {
+                    divLine.padding(.vertical, Theme.Spacing.xs + 2)
+                    HStack(spacing: Theme.Spacing.xs) {
                         if needsUpDown {
                             toggleChip("Up & Down", icon: "arrow.up.arrow.down",
                                        active: stat.upAndDownSuccess) {
@@ -749,42 +784,44 @@ struct RoundTrackerView: View {
     private func autoChip(_ label: String, active: Bool, icon: String) -> some View {
         HStack(spacing: 5) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .semibold))
+                .font(Theme.Typography.captionSmall)
             Text(label)
-                .font(.system(size: 12, weight: .semibold))
+                .font(Theme.Typography.captionSmall)
+                .fontWeight(.semibold)
         }
-        .foregroundStyle(active ? Color(red: 0.486, green: 0.718, blue: 0.498) : Color.black.opacity(0.28))
-        .padding(.horizontal, 10)
+        .foregroundStyle(active ? Theme.Colors.success : Theme.Colors.textTertiary)
+        .padding(.horizontal, Theme.Spacing.xs + 2)
         .padding(.vertical, 7)
         .background(
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(active ? Color(red: 0.486, green: 0.718, blue: 0.498).opacity(0.10) : Color.black.opacity(0.04))
+                .fill(active ? Theme.Colors.success.opacity(0.10) : Theme.Colors.textPrimary.opacity(0.04))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .strokeBorder(active ? Color(red: 0.486, green: 0.718, blue: 0.498).opacity(0.3) : Color.clear, lineWidth: 1)
+                .strokeBorder(active ? Theme.Colors.success.opacity(0.3) : Color.clear, lineWidth: 1)
         )
-        .animation(.easeInOut(duration: 0.14), value: active)
+        .animation(Theme.Animation.snappy, value: active)
     }
 
     private func toggleChip(_ label: String, icon: String, active: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 5) {
                 Image(systemName: icon)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(Theme.Typography.captionSmall)
                 Text(label)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(Theme.Typography.captionSmall)
+                    .fontWeight(.semibold)
             }
-            .foregroundStyle(active ? .white : .black)
-            .padding(.horizontal, 10)
+            .foregroundStyle(active ? .white : Theme.Colors.textPrimary)
+            .padding(.horizontal, Theme.Spacing.xs + 2)
             .padding(.vertical, 7)
             .background(
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(active ? Color.black : Color.black.opacity(0.05))
+                    .fill(active ? Theme.Colors.accent : Theme.Colors.textPrimary.opacity(0.05))
             )
         }
-        .buttonStyle(.plain)
-        .animation(.easeInOut(duration: 0.12), value: active)
+        .buttonStyle(ScorlyPressStyle())
+        .animation(Theme.Animation.snappy, value: active)
     }
 
     private var penaltyRow: some View {
@@ -796,70 +833,75 @@ struct RoundTrackerView: View {
                     }
                 }) {
                     Image(systemName: "minus")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.captionSmall)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                         .frame(width: 26, height: 26)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(Color.black.opacity(0.06)))
+                        .background(RoundedRectangle(cornerRadius: 5).fill(Theme.Colors.whisperBorder))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ScorlyPressStyle())
 
                 Text("\(stat.penaltyStrokes)")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.caption)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                     .monospacedDigit()
             }
 
             Button(action: { holeStats[currentHoleIndex].penaltyStrokes += 1 }) {
-                HStack(spacing: 4) {
+                HStack(spacing: Theme.Spacing.xxs) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(Theme.Typography.captionSmall)
                     Text("Penalty")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Theme.Typography.captionSmall)
+                        .fontWeight(.semibold)
                 }
-                .foregroundStyle(.black)
-                .padding(.horizontal, 10)
+                .foregroundStyle(Theme.Colors.textPrimary)
+                .padding(.horizontal, Theme.Spacing.xs + 2)
                 .padding(.vertical, 7)
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Color.black.opacity(0.05)))
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(Theme.Colors.textPrimary.opacity(0.05)))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ScorlyPressStyle())
         }
     }
 
     // MARK: - Bottom nav
 
     private var bottomNav: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: Theme.Spacing.xs + 2) {
             // Prev
             Button(action: {
-                withAnimation(.easeInOut(duration: 0.18)) {
+                withAnimation(Theme.Animation.snappy) {
                     if currentHoleIndex > 0 { currentHoleIndex -= 1 }
                 }
             }) {
                 HStack(spacing: 6) {
-                    Image(systemName: "chevron.left").font(.system(size: 13, weight: .bold))
-                    Text("Prev").font(.system(size: 15, weight: .semibold))
+                    Image(systemName: "chevron.left").font(Theme.Typography.caption).fontWeight(.bold)
+                    Text("Prev").font(Theme.Typography.bodySemibold)
                 }
-                .foregroundStyle(currentHoleIndex == 0 ? Color.black.opacity(0.2) : .black)
+                .foregroundStyle(currentHoleIndex == 0 ? Theme.Colors.textTertiary : Theme.Colors.textPrimary)
                 .frame(maxWidth: .infinity).frame(height: 52)
                 .background(
-                    RoundedRectangle(cornerRadius: cr, style: .continuous).fill(.white)
-                        .overlay(RoundedRectangle(cornerRadius: cr, style: .continuous)
-                            .strokeBorder(.black.opacity(0.08), lineWidth: 1))
+                    RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).fill(Theme.Colors.surface)
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                            .strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
                 )
             }
-            .buttonStyle(.plain).disabled(currentHoleIndex == 0)
+            .buttonStyle(ScorlyPressStyle()).disabled(currentHoleIndex == 0)
 
             // Hole indicator
             VStack(spacing: 1) {
                 Text("\(hole.number)")
-                    .font(.system(size: 20, weight: .black))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.title)
+                    .fontWeight(.black)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                     .monospacedDigit()
                     .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.18), value: currentHoleIndex)
+                    .animation(Theme.Animation.snappy, value: currentHoleIndex)
                 Text("of \(holes.count)")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.35))
+                    .font(Theme.Typography.captionSmall)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.Colors.textTertiary)
             }
             .frame(width: 52)
 
@@ -868,58 +910,59 @@ struct RoundTrackerView: View {
                 if isLastHole {
                     showSummary = true
                 } else {
-                    withAnimation(.easeInOut(duration: 0.18)) { currentHoleIndex += 1 }
+                    withAnimation(Theme.Animation.snappy) { currentHoleIndex += 1 }
                 }
             }) {
                 HStack(spacing: 6) {
                     if isLastHole {
-                        Image(systemName: "checkmark").font(.system(size: 13, weight: .bold))
-                        Text("Finish").font(.system(size: 15, weight: .semibold))
+                        Image(systemName: "checkmark").font(Theme.Typography.caption).fontWeight(.bold)
+                        Text("Finish").font(Theme.Typography.bodySemibold)
                     } else {
-                        Text("Next").font(.system(size: 15, weight: .semibold))
-                        Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold))
+                        Text("Next").font(Theme.Typography.bodySemibold)
+                        Image(systemName: "chevron.right").font(Theme.Typography.caption).fontWeight(.bold)
                     }
                 }
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity).frame(height: 52)
                 .background(
-                    RoundedRectangle(cornerRadius: cr, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                         .fill(LinearGradient(
-                            colors: [Color(red: 0.22, green: 0.22, blue: 0.24), Color.black],
+                            colors: [Theme.Colors.accent, Theme.Colors.accentLight.opacity(0.8)],
                             startPoint: .top, endPoint: .bottom
                         ))
                 )
+                // pulse removed — static button
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ScorlyPressStyle())
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.horizontal, Theme.Spacing.pageHorizontal)
+        .padding(.vertical, Theme.Spacing.sm)
     }
 
     // MARK: - Helpers
 
     private var divLine: some View {
-        Rectangle().fill(Color.black.opacity(0.06)).frame(height: 1).frame(maxWidth: .infinity)
+        Rectangle().fill(Theme.Colors.divider).frame(height: 1).frame(maxWidth: .infinity)
     }
 
     private func formCard<C: View>(@ViewBuilder _ content: () -> C) -> some View {
         content()
-            .padding(.horizontal, 18).padding(.vertical, 16)
+            .padding(.horizontal, Theme.Spacing.cardPadding).padding(.vertical, Theme.Spacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: cr, style: .continuous).fill(.white))
-            .overlay(RoundedRectangle(cornerRadius: cr, style: .continuous)
-                .strokeBorder(.black.opacity(0.06), lineWidth: 1))
-            .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).fill(Theme.Colors.surface))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+            .themeShadow(Theme.Shadow.subtle)
     }
 
     private func sectionLabel(icon: String, title: String) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Theme.Spacing.xs) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.black.opacity(0.38))
+                .font(Theme.Typography.caption)
+                .foregroundStyle(Theme.Colors.textTertiary)
             Text(title)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.black)
+                .font(Theme.Typography.bodySemibold)
+                .foregroundStyle(Theme.Colors.textPrimary)
         }
     }
 }
@@ -933,28 +976,28 @@ struct ClubPickerButton: View {
 
     var body: some View {
         HStack {
-            HStack(spacing: 8) {
+            HStack(spacing: Theme.Spacing.xs) {
                 Image(systemName: "minus.forwardslash.plus")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.38))
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textTertiary)
                 Text(label)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.bodySemibold)
+                    .foregroundStyle(Theme.Colors.textPrimary)
             }
             Spacer()
             Button(action: { showSheet = true }) {
                 Text(selected.isEmpty ? "Select" : selected)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(selected.isEmpty ? .black.opacity(0.3) : .white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .font(Theme.Typography.title3)
+                    .foregroundStyle(selected.isEmpty ? Theme.Colors.textTertiary : .white)
+                    .padding(.horizontal, Theme.Spacing.md)
+                    .padding(.vertical, Theme.Spacing.xs)
                     .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .fill(selected.isEmpty ? Color.black.opacity(0.06) : Color.black)
+                        RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                            .fill(selected.isEmpty ? Theme.Colors.whisperBorder : Theme.Colors.accent)
                     )
             }
-            .buttonStyle(.plain)
-            .animation(.easeInOut(duration: 0.14), value: selected)
+            .buttonStyle(ScorlyPressStyle())
+            .animation(Theme.Animation.snappy, value: selected)
         }
         .sheet(isPresented: $showSheet) {
             ClubKeypad(selected: $selected, onSelect: { showSheet = false })
@@ -984,26 +1027,27 @@ private struct ClubKeypad: View {
             // Handle + title
             HStack {
                 Text("Select Club")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.title3)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                 Spacer()
                 if !selected.isEmpty {
                     Button(action: { selected = ""; onSelect() }) {
                         Text("Clear")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.black.opacity(0.45))
+                            .font(Theme.Typography.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Theme.Colors.textSecondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ScorlyPressStyle())
                 }
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 22)
-            .padding(.bottom, 18)
+            .padding(.horizontal, Theme.Spacing.xl - 2)
+            .padding(.top, Theme.Spacing.xl - 2)
+            .padding(.bottom, Theme.Spacing.cardPadding)
 
             // 4-column keypad grid
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4),
-                spacing: 10
+                columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.xs + 2), count: 4),
+                spacing: Theme.Spacing.xs + 2
             ) {
                 ForEach(Self.clubs, id: \.v) { club in
                     let isSel = selected == club.v
@@ -1012,24 +1056,25 @@ private struct ClubKeypad: View {
                         onSelect()
                     }) {
                         Text(club.d)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(isSel ? .white : .black)
+                            .font(Theme.Typography.title3)
+                            .fontWeight(.bold)
+                            .foregroundStyle(isSel ? .white : Theme.Colors.textPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
                             .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    .fill(isSel ? Color.black : Color.black.opacity(0.06))
+                                RoundedRectangle(cornerRadius: Theme.Radius.sm + 2, style: .continuous)
+                                    .fill(isSel ? Theme.Colors.accent : Theme.Colors.whisperBorder)
                             )
                     }
-                    .buttonStyle(.plain)
-                    .animation(.easeInOut(duration: 0.10), value: isSel)
+                    .buttonStyle(ScorlyPressStyle())
+                    .animation(Theme.Animation.snappy, value: isSel)
                 }
             }
-            .padding(.horizontal, 22)
+            .padding(.horizontal, Theme.Spacing.xl - 2)
 
             Spacer()
         }
-        .background(Color(red: 0.97, green: 0.97, blue: 0.98).ignoresSafeArea())
+        .background(Theme.Colors.canvas.ignoresSafeArea())
     }
 }
 
@@ -1057,13 +1102,14 @@ private struct ScorecardSheet: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xxxs) {
                     Text("Scorecard")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.title)
+                        .fontWeight(.bold)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                     Text("\(totalPlayed) of \(holes.count) holes played")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.black.opacity(0.38))
+                        .font(Theme.Typography.captionSmall)
+                        .foregroundStyle(Theme.Colors.textTertiary)
                 }
                 Spacer()
                 // Running total badge
@@ -1071,28 +1117,32 @@ private struct ScorecardSheet: View {
                     let delta = totalDelta
                     let label = delta == 0 ? "E" : (delta > 0 ? "+\(delta)" : "\(delta)")
                     let bg: Color = delta < 0
-                        ? Color(red: 0.94, green: 0.78, blue: 0.10)           // under par → yellow
-                        : delta == 0 ? Color.black.opacity(0.07)              // even → neutral
+                        ? Theme.Colors.warning                                 // under par → yellow
+                        : delta == 0 ? Theme.Colors.textPrimary.opacity(0.07)  // even → neutral
                         : delta < playerHandicap
-                            ? Color(red: 0.486, green: 0.718, blue: 0.498)       // within handicap → green
-                            : Color(red: 0.88, green: 0.28, blue: 0.24)       // over handicap → red
-                    VStack(spacing: 2) {
+                            ? Theme.Colors.success                             // within handicap → green
+                            : Theme.Colors.error                               // over handicap → red
+                    VStack(spacing: Theme.Spacing.xxxs) {
                         Text(label)
-                            .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(delta == 0 ? .black : .white)
+                            .font(Theme.Typography.title2)
+                            .fontWeight(.black)
+                            .foregroundStyle(delta == 0 ? Theme.Colors.textPrimary : .white)
                             .monospacedDigit()
+                            .contentTransition(.numericText(value: Double(delta)))
+                            .animation(Theme.Animation.bouncy, value: delta)
                         Text("TOTAL")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(delta == 0 ? .black.opacity(0.45) : .white.opacity(0.7))
+                            .foregroundStyle(delta == 0 ? Theme.Colors.textSecondary : .white.opacity(0.7))
                             .kerning(1)
                     }
                     .frame(width: 58, height: 52)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(bg))
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(bg))
+                    .animation(Theme.Animation.smooth, value: bg)
                 }
             }
-            .padding(.horizontal, 22)
-            .padding(.top, 24)
-            .padding(.bottom, 16)
+            .padding(.horizontal, Theme.Spacing.xl - 2)
+            .padding(.top, Theme.Spacing.xl)
+            .padding(.bottom, Theme.Spacing.md)
 
             // Column headers
             HStack(spacing: 0) {
@@ -1106,16 +1156,17 @@ private struct ScorecardSheet: View {
                 Text("+/-")
                     .frame(width: 48, alignment: .center)
             }
-            .font(.system(size: 10, weight: .bold))
-            .foregroundStyle(.black.opacity(0.32))
+            .font(Theme.Typography.captionSmall)
+            .fontWeight(.bold)
+            .foregroundStyle(Theme.Colors.textTertiary)
             .kerning(0.8)
-            .padding(.horizontal, 22)
-            .padding(.bottom, 8)
+            .padding(.horizontal, Theme.Spacing.xl - 2)
+            .padding(.bottom, Theme.Spacing.xs)
 
             Rectangle()
-                .fill(Color.black.opacity(0.06))
+                .fill(Theme.Colors.divider)
                 .frame(height: 1)
-                .padding(.horizontal, 22)
+                .padding(.horizontal, Theme.Spacing.xl - 2)
 
             // Hole rows
             ScrollView(.vertical, showsIndicators: false) {
@@ -1132,19 +1183,20 @@ private struct ScorecardSheet: View {
                                 HStack(spacing: 5) {
                                     if isCurrent {
                                         Circle()
-                                            .fill(Color.black)
+                                            .fill(Theme.Colors.accent)
                                             .frame(width: 5, height: 5)
                                     }
                                     Text("\(h.number)")
-                                        .font(.system(size: 15, weight: isCurrent ? .black : .semibold))
-                                        .foregroundStyle(.black)
+                                        .font(Theme.Typography.bodySemibold)
+                                        .fontWeight(isCurrent ? .black : .semibold)
+                                        .foregroundStyle(Theme.Colors.textPrimary)
                                 }
                                 .frame(width: 44, alignment: .leading)
 
                                 // Par
                                 Text("\(h.par)")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundStyle(.black.opacity(0.45))
+                                    .font(Theme.Typography.bodyMedium)
+                                    .foregroundStyle(Theme.Colors.textSecondary)
                                     .frame(width: 36, alignment: .center)
 
                                 Spacer()
@@ -1154,9 +1206,9 @@ private struct ScorecardSheet: View {
                                     scoreBadge(strokes: stat.strokes, delta: delta)
                                         .frame(width: 58, alignment: .center)
                                 } else {
-                                    Text("—")
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundStyle(.black.opacity(0.2))
+                                    Text("\u{2014}")
+                                        .font(Theme.Typography.bodyMedium)
+                                        .foregroundStyle(Theme.Colors.textTertiary)
                                         .frame(width: 58, alignment: .center)
                                 }
 
@@ -1164,99 +1216,108 @@ private struct ScorecardSheet: View {
                                 if isPlayed {
                                     let lbl = delta == 0 ? "E" : (delta > 0 ? "+\(delta)" : "\(delta)")
                                     Text(lbl)
-                                        .font(.system(size: 13, weight: .semibold))
+                                        .font(Theme.Typography.caption)
+                                        .fontWeight(.semibold)
                                         .foregroundStyle(deltaColor(delta))
                                         .monospacedDigit()
                                         .frame(width: 48, alignment: .center)
                                 } else {
-                                    Text("—")
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(.black.opacity(0.15))
+                                    Text("\u{2014}")
+                                        .font(Theme.Typography.caption)
+                                        .foregroundStyle(Theme.Colors.textTertiary.opacity(0.5))
                                         .frame(width: 48, alignment: .center)
                                 }
                             }
-                            .padding(.horizontal, 22)
-                            .frame(height: 48)
-                            .background(isCurrent ? Color.black.opacity(0.03) : Color.clear)
+                            .padding(.horizontal, Theme.Spacing.xl - 2)
+                            .frame(height: Theme.Spacing.huge)
+                            .background(isCurrent ? Theme.Colors.accent.opacity(0.04) : Color.clear)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(ScorlyPressStyle())
 
                         if index < holes.count - 1 {
                             Rectangle()
-                                .fill(Color.black.opacity(0.045))
+                                .fill(Theme.Colors.divider.opacity(0.6))
                                 .frame(height: 1)
-                                .padding(.horizontal, 22)
+                                .padding(.horizontal, Theme.Spacing.xl - 2)
                         }
                     }
                 }
-                .padding(.bottom, 24)
+                .padding(.bottom, Theme.Spacing.xl)
             }
 
             // Totals footer
             Rectangle()
-                .fill(Color.black.opacity(0.06))
+                .fill(Theme.Colors.divider)
                 .frame(height: 1)
-                .padding(.horizontal, 22)
+                .padding(.horizontal, Theme.Spacing.xl - 2)
 
             HStack(spacing: 0) {
                 Text("TOTAL")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.captionSmall)
+                    .fontWeight(.bold)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                     .kerning(0.5)
                     .frame(width: 44, alignment: .leading)
 
                 Text("\(totalPar)")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.55))
+                    .font(Theme.Typography.title3)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                     .frame(width: 36, alignment: .center)
 
                 Spacer()
 
                 if totalPlayed > 0 {
                     Text("\(totalScore)")
-                        .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.title3)
+                        .fontWeight(.black)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                         .monospacedDigit()
+                        .contentTransition(.numericText(value: Double(totalScore)))
+                        .animation(Theme.Animation.bouncy, value: totalScore)
                         .frame(width: 58, alignment: .center)
 
                     let lbl = totalDelta == 0 ? "E" : (totalDelta > 0 ? "+\(totalDelta)" : "\(totalDelta)")
                     Text(lbl)
-                        .font(.system(size: 14, weight: .bold))
+                        .font(Theme.Typography.bodyMedium)
+                        .fontWeight(.bold)
                         .foregroundStyle(deltaColor(totalDelta))
                         .monospacedDigit()
+                        .contentTransition(.numericText(value: Double(totalDelta)))
+                        .animation(Theme.Animation.bouncy, value: totalDelta)
                         .frame(width: 48, alignment: .center)
                 }
             }
-            .padding(.horizontal, 22)
+            .padding(.horizontal, Theme.Spacing.xl - 2)
             .frame(height: 52)
         }
-        .background(Color(red: 0.97, green: 0.97, blue: 0.98).ignoresSafeArea())
+        .background(Theme.Colors.canvas.ignoresSafeArea())
     }
 
     private func scoreBadge(strokes: Int, delta: Int) -> some View {
         let (bg, fg) = scoreBadgeColors(delta: delta)
         return Text("\(strokes)")
-            .font(.system(size: 14, weight: .bold))
+            .font(Theme.Typography.bodyMedium)
+            .fontWeight(.bold)
             .foregroundStyle(fg)
             .frame(width: 34, height: 34)
-            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(bg))
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(bg))
             .monospacedDigit()
     }
 
     private func scoreBadgeColors(delta: Int) -> (Color, Color) {
         switch delta {
-        case ..<(-1): return (Color(red: 0.10, green: 0.60, blue: 0.30), .white)         // eagle+
-        case -1:      return (Color(red: 0.486, green: 0.718, blue: 0.498).opacity(0.15), Color(red: 0.416, green: 0.682, blue: 0.427)) // birdie
-        case 0:       return (Color.black.opacity(0.06), .black)                          // par
-        case 1:       return (Color(red: 0.94, green: 0.67, blue: 0.16).opacity(0.18), Color(red: 0.72, green: 0.48, blue: 0.05)) // bogey
-        default:      return (Color(red: 0.88, green: 0.28, blue: 0.24).opacity(0.14), Color(red: 0.75, green: 0.18, blue: 0.15)) // double+
+        case ..<(-1): return (Theme.Colors.success, .white)                               // eagle+
+        case -1:      return (Theme.Colors.success.opacity(0.15), Theme.Colors.success)   // birdie
+        case 0:       return (Theme.Colors.textPrimary.opacity(0.06), Theme.Colors.textPrimary) // par
+        case 1:       return (Theme.Colors.warning.opacity(0.18), Theme.Colors.warning)   // bogey
+        default:      return (Theme.Colors.error.opacity(0.14), Theme.Colors.error)       // double+
         }
     }
 
     private func deltaColor(_ delta: Int) -> Color {
-        if delta < 0 { return Color(red: 0.72, green: 0.52, blue: 0.00) }           // under par → amber
-        if delta == 0 { return Color.black.opacity(0.38) }                           // even → neutral
-        if delta < playerHandicap { return Color(red: 0.12, green: 0.55, blue: 0.30) } // within handicap → green
-        return Color(red: 0.75, green: 0.18, blue: 0.15)                             // over handicap → red
+        if delta < 0 { return Theme.Colors.warning }                                  // under par → amber
+        if delta == 0 { return Theme.Colors.textTertiary }                            // even → neutral
+        if delta < playerHandicap { return Theme.Colors.success }                     // within handicap → green
+        return Theme.Colors.error                                                     // over handicap → red
     }
 }

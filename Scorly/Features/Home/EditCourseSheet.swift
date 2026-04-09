@@ -106,26 +106,26 @@ struct EditCourseSheet: View {
 
                     Button(action: save) {
                         Text(isSaving ? "Saving..." : "Save Changes")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(Theme.Typography.title3)
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
                             .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(canSave ? Color.black : Color.black.opacity(0.28))
+                                RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                                    .fill(canSave ? Theme.Colors.accent : Theme.Colors.accent.opacity(0.28))
                             )
                     }
                     .disabled(!canSave || isSaving)
-                    .buttonStyle(.plain)
-                    .padding(.top, 32)
-                    .padding(.bottom, 48)
+                    .buttonStyle(ScorlyPressStyle())
+                    .padding(.top, Theme.Spacing.xxl)
+                    .padding(.bottom, Theme.Spacing.huge)
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Theme.Spacing.pageHorizontal)
             }
         }
         .ignoresSafeArea(edges: .top)
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(red: 0.97, green: 0.97, blue: 0.98))
+        .background(Theme.Colors.canvas)
         .alert("Unable to Save Course", isPresented: saveErrorBinding) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -152,26 +152,26 @@ struct EditCourseSheet: View {
                     .frame(width: 28, height: 28)
                     .background(.white.opacity(0.22), in: Circle())
             }
-            .buttonStyle(.plain)
-            .padding(.top, 16).padding(.trailing, 20)
+            .buttonStyle(ScorlyPressStyle())
+            .padding(.top, Theme.Spacing.md).padding(.trailing, Theme.Spacing.pageHorizontal)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                 Text(name.isEmpty ? "Course Name" : name)
                     .font(.system(size: 26, weight: .bold))
                     .foregroundStyle(name.isEmpty ? .white.opacity(0.35) : .white)
                     .lineLimit(2)
                 Text(location.isEmpty ? "Location" : location)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(Theme.Typography.caption)
                     .foregroundStyle(.white.opacity(location.isEmpty ? 0.35 : 0.70))
                 Text("Par \(totalPar)")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.white.opacity(0.55))
-                    .padding(.top, 2)
+                    .padding(.top, Theme.Spacing.xxxs)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Theme.Spacing.pageHorizontal)
             .padding(.top, 60)
-            .padding(.bottom, 24)
+            .padding(.bottom, Theme.Spacing.xl)
         }
         .frame(maxWidth: .infinity)
     }
@@ -179,33 +179,33 @@ struct EditCourseSheet: View {
     // MARK: - Theme grid
 
     private var themeGrid: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.xs + 2), count: 3), spacing: Theme.Spacing.xs + 2) {
             ForEach(AddCourseSheet.themes.indices, id: \.self) { i in
                 let theme = AddCourseSheet.themes[i]
                 ZStack(alignment: .bottomLeading) {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.Radius.sm + 2, style: .continuous)
                         .fill(LinearGradient(colors: theme.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
                         .frame(height: 56)
                     if selectedTheme == i {
                         Image(systemName: "checkmark")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(.white)
-                            .padding(6)
+                            .padding(Theme.Spacing.xxs + 2)
                     }
                     Text(theme.name)
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(Theme.Typography.captionSmall)
                         .foregroundStyle(.white.opacity(0.85))
-                        .padding(.horizontal, 8)
-                        .padding(.bottom, 6)
+                        .padding(.horizontal, Theme.Spacing.xs)
+                        .padding(.bottom, Theme.Spacing.xxs + 2)
                 }
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.Radius.sm + 2, style: .continuous)
                         .strokeBorder(selectedTheme == i ? .white : .clear, lineWidth: 2)
                 )
-                .onTapGesture { withAnimation(.easeInOut(duration: 0.15)) { selectedTheme = i } }
+                .onTapGesture { withAnimation(Theme.Animation.snappy) { selectedTheme = i } }
             }
         }
-        .padding(.bottom, 24)
+        .padding(.bottom, Theme.Spacing.xl)
     }
 
     // MARK: - Course info
@@ -214,48 +214,48 @@ struct EditCourseSheet: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Name")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.55))
+                    .font(Theme.Typography.bodyMedium)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                     .frame(width: 80, alignment: .leading)
                 TextField("e.g. Pebble Beach G.L.", text: $name)
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.body)
+                    .foregroundStyle(Theme.Colors.textPrimary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, Theme.Spacing.sm + 2)
 
-            Divider().padding(.horizontal, 16)
+            Divider().padding(.horizontal, Theme.Spacing.md)
 
             HStack {
                 Text("Location")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.55))
+                    .font(Theme.Typography.bodyMedium)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                     .frame(width: 80, alignment: .leading)
                 TextField("e.g. Pebble Beach, CA", text: $location)
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.body)
+                    .foregroundStyle(Theme.Colors.textPrimary)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, Theme.Spacing.sm + 2)
         }
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
-        .padding(.bottom, 24)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
+        .padding(.bottom, Theme.Spacing.xl)
     }
 
     // MARK: - Tees
 
     private var teesSection: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Theme.Spacing.xs + 2) {
             ForEach(tees.indices, id: \.self) { i in
                 teeRow(index: i)
             }
 
             HStack {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.18)) {
+                    withAnimation(Theme.Animation.smooth) {
                         tees.append(TeeInput(name: "", rating: "", slope: ""))
                         for j in holeInputs.indices {
                             while holeInputs[j].yardages.count < tees.count {
@@ -266,19 +266,19 @@ struct EditCourseSheet: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(Theme.Typography.caption)
                         Text("Add Tee")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(Theme.Typography.caption)
                     }
-                    .foregroundStyle(.black.opacity(0.55))
+                    .foregroundStyle(Theme.Colors.textSecondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ScorlyPressStyle())
 
                 Spacer()
 
                 if tees.count > 1 {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.18)) {
+                        withAnimation(Theme.Animation.smooth) {
                             tees.removeLast()
                             for j in holeInputs.indices {
                                 while holeInputs[j].yardages.count > tees.count {
@@ -289,60 +289,60 @@ struct EditCourseSheet: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: "minus.circle.fill")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(Theme.Typography.caption)
                             Text("Remove")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(Theme.Typography.caption)
                         }
-                        .foregroundStyle(Color(red: 0.80, green: 0.18, blue: 0.14).opacity(0.80))
+                        .foregroundStyle(Theme.Colors.error.opacity(0.80))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ScorlyPressStyle())
                 }
             }
-            .padding(.top, 4)
+            .padding(.top, Theme.Spacing.xxs)
         }
-        .padding(.bottom, 24)
+        .padding(.bottom, Theme.Spacing.xl)
     }
 
     private func teeRow(index i: Int) -> some View {
         VStack(spacing: 0) {
             HStack {
                 Text("Name")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.50))
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textTertiary)
                     .frame(width: 60, alignment: .leading)
                 TextField("e.g. Championship", text: $tees[i].name)
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Theme.Colors.textPrimary)
             }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            Divider().padding(.horizontal, 14)
-            HStack(spacing: 16) {
+            .padding(.horizontal, Theme.Spacing.sm + 2).padding(.vertical, Theme.Spacing.sm - 1)
+            Divider().padding(.horizontal, Theme.Spacing.sm + 2)
+            HStack(spacing: Theme.Spacing.md) {
                 HStack {
                     Text("Rating")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.black.opacity(0.50))
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Colors.textTertiary)
                         .frame(width: 60, alignment: .leading)
                     TextField("72.0", text: $tees[i].rating)
-                        .font(.system(size: 14)).foregroundStyle(.black)
+                        .font(.system(size: 14)).foregroundStyle(Theme.Colors.textPrimary)
                         .keyboardType(.decimalPad)
                 }
-                Divider().frame(height: 20)
+                Divider().frame(height: Theme.Spacing.pageHorizontal)
                 HStack {
                     Text("Slope")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.black.opacity(0.50))
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Colors.textTertiary)
                         .frame(width: 48, alignment: .leading)
                     TextField("113", text: $tees[i].slope)
-                        .font(.system(size: 14)).foregroundStyle(.black)
+                        .font(.system(size: 14)).foregroundStyle(Theme.Colors.textPrimary)
                         .keyboardType(.numberPad)
                 }
             }
-            .padding(.horizontal, 14).padding(.vertical, 11)
+            .padding(.horizontal, Theme.Spacing.sm + 2).padding(.vertical, Theme.Spacing.sm - 1)
         }
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     // MARK: - Scorecard
@@ -363,42 +363,42 @@ struct EditCourseSheet: View {
                         .lineLimit(1)
                 }
             }
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.black.opacity(0.40))
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(.white)
+            .font(Theme.Typography.captionSmall)
+            .foregroundStyle(Theme.Colors.textTertiary)
+            .padding(.horizontal, Theme.Spacing.sm)
+            .padding(.vertical, Theme.Spacing.xs + 2)
+            .background(Theme.Colors.surface)
 
-            Divider().padding(.horizontal, 12)
+            Divider().padding(.horizontal, Theme.Spacing.sm)
 
             ForEach(holeInputs.indices, id: \.self) { idx in
                 holeCollapsedRow(idx: idx)
                 if idx < holeInputs.count - 1 {
-                    Divider().padding(.horizontal, 12).opacity(0.5)
+                    Divider().padding(.horizontal, Theme.Spacing.sm).opacity(0.5)
                 }
                 if expandedHole == idx {
                     holeEditor(idx: idx)
                     if idx < holeInputs.count - 1 {
-                        Divider().padding(.horizontal, 12)
+                        Divider().padding(.horizontal, Theme.Spacing.sm)
                     }
                 }
                 if idx == 8 {
-                    Divider().padding(.horizontal, 12)
+                    Divider().padding(.horizontal, Theme.Spacing.sm)
                     subtotalRow(label: "OUT", range: 0..<9)
-                    Divider().padding(.horizontal, 12)
+                    Divider().padding(.horizontal, Theme.Spacing.sm)
                 }
             }
 
-            Divider().padding(.horizontal, 12)
+            Divider().padding(.horizontal, Theme.Spacing.sm)
             subtotalRow(label: "IN", range: 9..<18)
-            Divider().padding(.horizontal, 12)
+            Divider().padding(.horizontal, Theme.Spacing.sm)
             subtotalRow(label: "TOTAL", range: 0..<18)
         }
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
-        .padding(.bottom, 24)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
+        .padding(.bottom, Theme.Spacing.xl)
     }
 
     private func holeCollapsedRow(idx: Int) -> some View {
@@ -408,63 +408,63 @@ struct EditCourseSheet: View {
         return HStack(spacing: 0) {
             Text("\(hole.number)")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.black)
+                .foregroundStyle(Theme.Colors.textPrimary)
                 .frame(width: 30, alignment: .leading)
             Text("\(hole.par)")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.black.opacity(0.45))
+                .foregroundStyle(Theme.Colors.textTertiary)
                 .frame(width: 34, alignment: .center)
             Text("\(hole.handicap)")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.black.opacity(0.45))
+                .foregroundStyle(Theme.Colors.textTertiary)
                 .frame(width: 34, alignment: .center)
             ForEach(0..<tees.count, id: \.self) { t in
                 let raw = t < hole.yardages.count ? hole.yardages[t] : ""
                 let yds = Int(raw) ?? 0
                 Text(yds > 0 ? "\(yds)" : "—")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(yds > 0 ? .black.opacity(0.65) : .black.opacity(0.20))
+                    .foregroundStyle(yds > 0 ? Theme.Colors.textSecondary : Theme.Colors.textTertiary.opacity(0.5))
                     .frame(maxWidth: .infinity, alignment: .center)
             }
             Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.black.opacity(0.30))
+                .foregroundStyle(Theme.Colors.textTertiary)
                 .frame(width: 20)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.xs + 2)
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.18)) {
+            withAnimation(Theme.Animation.smooth) {
                 expandedHole = isExpanded ? nil : idx
             }
         }
     }
 
     private func holeEditor(idx: Int) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Theme.Spacing.sm) {
             // Par picker
             HStack {
                 Text("Par")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.55))
+                    .foregroundStyle(Theme.Colors.textSecondary)
                 Spacer()
-                HStack(spacing: 8) {
+                HStack(spacing: Theme.Spacing.xs) {
                     ForEach([3, 4, 5], id: \.self) { p in
                         Button {
                             holeInputs[idx].par = p
                         } label: {
                             Text("\(p)")
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(holeInputs[idx].par == p ? .white : .black)
+                                .foregroundStyle(holeInputs[idx].par == p ? .white : Theme.Colors.textPrimary)
                                 .frame(width: 38, height: 34)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(holeInputs[idx].par == p ? Color.black : Color.black.opacity(0.06))
+                                    RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                                        .fill(holeInputs[idx].par == p ? Theme.Colors.accent : Theme.Colors.textPrimary.opacity(0.06))
                                 )
                         }
-                        .buttonStyle(.plain)
-                        .animation(.easeInOut(duration: 0.12), value: holeInputs[idx].par)
+                        .buttonStyle(ScorlyPressStyle())
+                        .animation(Theme.Animation.snappy, value: holeInputs[idx].par)
                     }
                 }
             }
@@ -473,36 +473,38 @@ struct EditCourseSheet: View {
             HStack {
                 Text("Handicap")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.55))
+                    .foregroundStyle(Theme.Colors.textSecondary)
                 Spacer()
-                HStack(spacing: 12) {
+                HStack(spacing: Theme.Spacing.sm) {
                     Button {
                         if holeInputs[idx].handicap > 1 { holeInputs[idx].handicap -= 1 }
                     } label: {
                         Image(systemName: "minus")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.black)
+                            .font(Theme.Typography.caption)
+                            .foregroundStyle(Theme.Colors.textPrimary)
                             .frame(width: 28, height: 28)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.06)))
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Theme.Colors.textPrimary.opacity(0.06)))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ScorlyPressStyle())
 
                     Text("\(holeInputs[idx].handicap)")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.bodySemibold)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                         .monospacedDigit()
-                        .frame(minWidth: 24, alignment: .center)
+                        .frame(minWidth: Theme.Spacing.xl, alignment: .center)
+                        .contentTransition(.numericText(value: Double(holeInputs[idx].handicap)))
+                        .animation(Theme.Animation.snappy, value: holeInputs[idx].handicap)
 
                     Button {
                         if holeInputs[idx].handicap < 18 { holeInputs[idx].handicap += 1 }
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(.black)
+                            .font(Theme.Typography.caption)
+                            .foregroundStyle(Theme.Colors.textPrimary)
                             .frame(width: 28, height: 28)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.06)))
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Theme.Colors.textPrimary.opacity(0.06)))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ScorlyPressStyle())
                 }
             }
 
@@ -510,22 +512,22 @@ struct EditCourseSheet: View {
             ForEach(0..<tees.count, id: \.self) { t in
                 HStack {
                     Text(tees[t].name.isEmpty ? "Tee \(t+1)" : tees[t].name)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.black.opacity(0.55))
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
                         .lineLimit(1)
                     Spacer()
                     TextField("yds", text: yardageBinding(hole: idx, tee: t))
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.bodyMedium)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                         .multilineTextAlignment(.trailing)
                         .keyboardType(.numberPad)
                         .frame(width: 70)
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color.black.opacity(0.02))
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.sm)
+        .background(Theme.Colors.textPrimary.opacity(0.02))
     }
 
     private func subtotalRow(label: String, range: Range<Int>) -> some View {
@@ -546,11 +548,12 @@ struct EditCourseSheet: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
-        .font(.system(size: 13, weight: .bold))
-        .foregroundStyle(.black)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.black.opacity(0.03))
+        .font(Theme.Typography.caption)
+        .foregroundStyle(Theme.Colors.textPrimary)
+        .monospacedDigit()
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.xs + 2)
+        .background(Theme.Colors.textPrimary.opacity(0.03))
     }
 
     private func yardageBinding(hole: Int, tee: Int) -> Binding<String> {
@@ -571,10 +574,10 @@ struct EditCourseSheet: View {
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.black.opacity(0.40))
+            .font(Theme.Typography.captionSmall)
+            .foregroundStyle(Theme.Colors.textTertiary)
             .padding(.top, 28)
-            .padding(.bottom, 10)
+            .padding(.bottom, Theme.Spacing.xs + 2)
     }
 
     // MARK: - Save

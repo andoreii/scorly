@@ -14,10 +14,17 @@ fileprivate struct RadarMetric: Identifiable {
 }
 
 struct StatsView: View {
+    @Environment(TabMotionCoordinator.self) private var tabMotion
     @State private var allRounds: [CompletedRound] = []
+    @State private var radarAnimated = false
+    @State private var radarAnimationToken = 0
 
     private var rounds: [CompletedRound] {
         Array(allRounds.sorted { $0.date > $1.date }.prefix(20))
+    }
+
+    private var isActiveTab: Bool {
+        tabMotion.activeTab == 3
     }
 
     // MARK: – Overview
@@ -111,19 +118,19 @@ struct StatsView: View {
                 label: "Scoring",
                 score: scoringScore,
                 detail: rounds.isEmpty ? "No rounds" : "Avg \(avgScore)",
-                color: .black
+                color: Theme.Colors.scoring
             ),
             RadarMetric(
                 label: "Driving",
                 score: firFraction,
                 detail: totalFIRApp > 0 ? "\(Int((firFraction * 100).rounded()))% FIR" : "No FIR data",
-                color: Color(red: 0.14, green: 0.35, blue: 0.72)
+                color: Theme.Colors.driving
             ),
             RadarMetric(
                 label: "Approach",
                 score: girFraction,
                 detail: totalHoles > 0 ? "\(Int((girFraction * 100).rounded()))% GIR" : "No GIR data",
-                color: Color(red: 0.486, green: 0.718, blue: 0.498)
+                color: Theme.Colors.approach
             ),
             RadarMetric(
                 label: "Short Game",
@@ -131,19 +138,19 @@ struct StatsView: View {
                 detail: bunkerOpportunityCount > 0
                     ? "\(Int((shortGameScore * 100).rounded()))% combined"
                     : (missedGIRCount > 0 ? "\(Int((upAndDownRate * 100).rounded()))% up-and-down" : "No short game data"),
-                color: Color(red: 0.82, green: 0.65, blue: 0.38)
+                color: Theme.Colors.shortGame
             ),
             RadarMetric(
                 label: "Putting",
                 score: puttingScore,
                 detail: totalHoles > 0 ? String(format: "%.2f putts/hole", avgPuttsPerHole) : "No putting data",
-                color: Color(red: 0.39, green: 0.34, blue: 0.85)
+                color: Theme.Colors.putting
             ),
             RadarMetric(
                 label: "Trouble",
                 score: troubleAvoidanceScore,
                 detail: totalHoles > 0 ? String(format: "%.2f trouble/hole", troubleRatePerHole) : "No trouble data",
-                color: Color(red: 0.88, green: 0.28, blue: 0.24)
+                color: Theme.Colors.trouble
             )
         ]
     }
@@ -231,43 +238,63 @@ struct StatsView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.97, green: 0.97, blue: 0.98).ignoresSafeArea()
+            Theme.Colors.canvas.ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
 
                     Text("Stats")
-                        .font(.system(size: 38, weight: .bold))
-                        .foregroundStyle(.black)
-                        .padding(.bottom, 20)
+                        .font(Theme.Typography.monoDisplay)
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                        .tabReveal(tab: 3, order: 0)
+                        .padding(.bottom, Theme.Spacing.lg)
 
                     heroCard
+                        .tabReveal(tab: 3, order: 1)
 
                     sectionLabel("COMPLETE GAME")
-                    radarCard.padding(.top, 8)
+                        .tabReveal(tab: 3, order: 2)
+                    radarCard.padding(.top, Theme.Spacing.xs)
+                        .tabReveal(tab: 3, order: 3)
 
                     sectionLabel("SCORING")
-                    distributionCard.padding(.top, 8)
+                        .tabReveal(tab: 3, order: 4)
+                    distributionCard.padding(.top, Theme.Spacing.xs)
+                        .tabReveal(tab: 3, order: 5)
 
                     sectionLabel("ACCURACY")
-                    accuracyCard.padding(.top, 8)
+                        .tabReveal(tab: 3, order: 6)
+                    accuracyCard.padding(.top, Theme.Spacing.xs)
+                        .tabReveal(tab: 3, order: 7)
 
                     sectionLabel("PERFORMANCE")
-                    parTypeCard.padding(.top, 8)
+                        .tabReveal(tab: 3, order: 8)
+                    parTypeCard.padding(.top, Theme.Spacing.xs)
+                        .tabReveal(tab: 3, order: 9)
 
                     sectionLabel("PUTTING")
-                    puttingCard.padding(.top, 8)
+                        .tabReveal(tab: 3, order: 10)
+                    puttingCard.padding(.top, Theme.Spacing.xs)
+                        .tabReveal(tab: 3, order: 11)
 
                     sectionLabel("HAZARDS")
-                    hazardsCard.padding(.top, 8)
+                        .tabReveal(tab: 3, order: 12)
+                    hazardsCard.padding(.top, Theme.Spacing.xs)
+                        .tabReveal(tab: 3, order: 13)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
+                .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                .padding(.top, Theme.Spacing.xs)
                 .padding(.bottom, 100)
             }
             .scrollBounceBehavior(.basedOnSize)
         }
         .task { await loadRounds() }
+        .onAppear {
+            syncRadarAnimation(for: isActiveTab)
+        }
+        .onChange(of: isActiveTab) { _, isActive in
+            syncRadarAnimation(for: isActive)
+        }
     }
 
     private func loadRounds() async {
@@ -282,92 +309,108 @@ struct StatsView: View {
         } catch {
             allRounds = []
         }
+        syncRadarAnimation(for: isActiveTab)
+    }
+
+    private func syncRadarAnimation(for isActive: Bool) {
+        radarAnimationToken += 1
+        let token = radarAnimationToken
+        radarAnimated = false
+
+        guard isActive else { return }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            guard token == radarAnimationToken else { return }
+            radarAnimated = true
+        }
     }
 
     // MARK: – Section label
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.black.opacity(0.32))
+            .font(Theme.Typography.captionSmall)
+            .foregroundStyle(Theme.Colors.textTertiary)
             .kerning(1.0)
-            .padding(.top, 26)
+            .padding(.top, Theme.Spacing.xl + 2)
     }
 
     // MARK: – Hero card
 
     private var heroCard: some View {
         ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                .fill(LinearGradient(colors: [Color.black, Color(red: 0.14, green: 0.14, blue: 0.16)],
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .fill(LinearGradient(colors: [Theme.Colors.accent, Theme.Colors.accentLight],
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                 .fill(LinearGradient(colors: [.white.opacity(0.08), .clear],
                                      startPoint: .topLeading, endPoint: .center))
-            RoundedRectangle(cornerRadius: 13, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                 .strokeBorder(.white.opacity(0.10), lineWidth: 1)
 
             VStack(alignment: .leading, spacing: 0) {
                 Image(systemName: "gauge.medium")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(Theme.Typography.bodySemibold)
                     .foregroundStyle(.white.opacity(0.40))
                 Spacer()
                 Text(handicap.map { String(format: "%.1f", $0) } ?? "—")
-                    .font(.system(size: 56, weight: .bold))
+                    .font(Theme.Typography.display)
                     .foregroundStyle(.white)
                     .monospacedDigit()
-                    .padding(.bottom, 2)
+                    .contentTransition(.numericText())
+                    .padding(.bottom, Theme.Spacing.xxxs)
                 Text("Handicap Index")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(Theme.Typography.title3)
                     .foregroundStyle(.white.opacity(0.80))
-                    .padding(.bottom, 16)
+                    .padding(.bottom, Theme.Spacing.md)
                 HStack(spacing: 0) {
                     heroMiniStat(value: "\(avgScore)", label: "Avg Score")
-                    Rectangle().fill(.white.opacity(0.20)).frame(width: 1, height: 26).padding(.trailing, 16)
+                    Rectangle().fill(.white.opacity(0.20)).frame(width: 1, height: 26).padding(.trailing, Theme.Spacing.md)
                     heroMiniStat(value: "\(bestScore)", label: "Best Score")
-                    Rectangle().fill(.white.opacity(0.20)).frame(width: 1, height: 26).padding(.trailing, 16)
+                    Rectangle().fill(.white.opacity(0.20)).frame(width: 1, height: 26).padding(.trailing, Theme.Spacing.md)
                     heroMiniStat(value: "\(roundCount)", label: "Rounds")
                     Spacer()
                     HStack(spacing: 5) {
                         Image(systemName: isImproving ? "arrow.down.right" : "arrow.up.right")
                             .font(.system(size: 9, weight: .bold))
                         Text(isImproving ? "Improving" : "Trending up")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(Theme.Typography.captionSmall)
                     }
                     .foregroundStyle(isImproving
-                        ? Color(red: 0.35, green: 0.90, blue: 0.55)
-                        : Color(red: 1.0,  green: 0.65, blue: 0.30))
+                        ? Theme.Colors.success
+                        : Theme.Colors.warning)
                 }
             }
-            .padding(22)
+            .padding(Theme.Spacing.lg + 2)
         }
         .frame(maxWidth: .infinity).frame(height: 218)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .themeShadow(Theme.Shadow.prominent)
     }
 
     private func heroMiniStat(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value).font(.system(size: 17, weight: .bold)).foregroundStyle(.white).monospacedDigit()
-            Text(label).font(.system(size: 10, weight: .medium)).foregroundStyle(.white.opacity(0.42))
+        VStack(alignment: .leading, spacing: Theme.Spacing.xxxs) {
+            Text(value).font(Theme.Typography.title2).foregroundStyle(.white).monospacedDigit()
+                .contentTransition(.numericText())
+            Text(label).font(Theme.Typography.captionSmall).foregroundStyle(.white.opacity(0.42))
         }
-        .padding(.trailing, 16)
+        .padding(.trailing, Theme.Spacing.md)
     }
 
     // MARK: – Radar card
 
     private var radarCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                 Text("Complete Game Profile")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.title2)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                 Text("Six core areas normalized so higher always means stronger performance.")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.45))
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textTertiary)
             }
 
-            RadarChartView(metrics: completeGameMetrics)
+            RadarChartView(metrics: completeGameMetrics, radarAnimated: radarAnimated)
                 .frame(height: 260)
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
@@ -376,11 +419,11 @@ struct StatsView: View {
                 }
             }
         }
-        .padding(18)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .padding(Theme.Spacing.cardPadding)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     private func radarMetricCell(_ metric: RadarMetric) -> some View {
@@ -391,26 +434,26 @@ struct StatsView: View {
                 .padding(.top, 5)
 
             VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.xs) {
                     Text(metric.label)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                     Spacer(minLength: 0)
                     Text("\(Int((metric.score * 100).rounded()))")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.title3)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                         .monospacedDigit()
                 }
                 Text(metric.detail)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.42))
+                    .font(Theme.Typography.captionSmall)
+                    .foregroundStyle(Theme.Colors.textTertiary)
                     .lineLimit(2)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
-        .background(Color.black.opacity(0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.sm - 1)
+        .background(Theme.Colors.canvas)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm + 3, style: .continuous))
     }
 
     private func normalizedInverse(_ value: Double, best: Double, worst: Double) -> Double {
@@ -427,12 +470,12 @@ struct StatsView: View {
                 let t = CGFloat(max(distTotal, 1))
                 HStack(spacing: 2) {
                     if dist.under > 0 {
-                        Color(red: 0.353, green: 0.620, blue: 0.365).frame(width: w * CGFloat(dist.under) / t)
+                        Theme.Colors.success.frame(width: w * CGFloat(dist.under) / t)
                     }
-                    Color.black.frame(width: w * CGFloat(dist.pars) / t)
-                    Color.black.opacity(0.28).frame(width: w * CGFloat(dist.bogeys) / t)
+                    Theme.Colors.textPrimary.frame(width: w * CGFloat(dist.pars) / t)
+                    Theme.Colors.textTertiary.frame(width: w * CGFloat(dist.bogeys) / t)
                     if dist.doubles > 0 {
-                        Color(red: 0.70, green: 0.15, blue: 0.15).frame(width: w * CGFloat(dist.doubles) / t)
+                        Theme.Colors.error.frame(width: w * CGFloat(dist.doubles) / t)
                     }
                 }
                 .frame(height: 14)
@@ -441,28 +484,28 @@ struct StatsView: View {
             .clipShape(RoundedRectangle(cornerRadius: 7))
 
             VStack(spacing: 9) {
-                distRow(color: Color(red: 0.353, green: 0.620, blue: 0.365), label: "Under Par", count: dist.under)
-                distRow(color: .black,                                      label: "Par",       count: dist.pars)
-                distRow(color: .black.opacity(0.28),                        label: "Bogey",     count: dist.bogeys)
-                distRow(color: Color(red: 0.70, green: 0.15, blue: 0.15),  label: "Double+",   count: dist.doubles)
+                distRow(color: Theme.Colors.success,       label: "Under Par", count: dist.under)
+                distRow(color: Theme.Colors.textPrimary,   label: "Par",       count: dist.pars)
+                distRow(color: Theme.Colors.textTertiary,  label: "Bogey",     count: dist.bogeys)
+                distRow(color: Theme.Colors.error,         label: "Double+",   count: dist.doubles)
             }
         }
-        .padding(18)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .padding(Theme.Spacing.cardPadding)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     private func distRow(color: Color, label: String, count: Int) -> some View {
         let pct = distTotal > 0 ? Int((Double(count) / Double(distTotal) * 100).rounded()) : 0
         return HStack(spacing: 10) {
             Circle().fill(color).frame(width: 8, height: 8)
-            Text(label).font(.system(size: 13, weight: .medium)).foregroundStyle(.black)
+            Text(label).font(Theme.Typography.caption).foregroundStyle(Theme.Colors.textPrimary)
             Spacer()
-            Text("\(count)").font(.system(size: 13, weight: .semibold)).foregroundStyle(.black)
+            Text("\(count)").font(Theme.Typography.caption).fontWeight(.semibold).foregroundStyle(Theme.Colors.textPrimary)
                 .monospacedDigit().frame(width: 28, alignment: .trailing)
-            Text("\(pct)%").font(.system(size: 12, weight: .medium)).foregroundStyle(.black.opacity(0.38))
+            Text("\(pct)%").font(Theme.Typography.captionSmall).foregroundStyle(Theme.Colors.textTertiary)
                 .monospacedDigit().frame(width: 34, alignment: .trailing)
         }
     }
@@ -478,7 +521,7 @@ struct StatsView: View {
                 dirs: teeDirs,
                 missTotal: teeMisses.total
             )
-            Rectangle().fill(Color.black.opacity(0.06)).frame(width: 1)
+            Rectangle().fill(Theme.Colors.whisperBorder).frame(width: 1)
             shotAccuracyPanel(
                 title: "APPROACH",
                 pctValue: girText,
@@ -487,10 +530,10 @@ struct StatsView: View {
                 missTotal: appMisses.total
             )
         }
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     private func shotAccuracyPanel(
@@ -502,54 +545,54 @@ struct StatsView: View {
     ) -> some View {
         VStack(spacing: 0) {
             Text(title)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.black.opacity(0.35))
+                .font(Theme.Typography.captionSmall)
+                .foregroundStyle(Theme.Colors.textTertiary)
                 .kerning(0.6)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.bottom, 12)
+                .padding(.bottom, Theme.Spacing.sm)
 
-            VStack(spacing: 2) {
+            VStack(spacing: Theme.Spacing.xxxs) {
                 Text(pctValue)
-                    .font(.system(size: 36, weight: .bold))
+                    .font(Theme.Typography.largeTitle)
                     .foregroundStyle(pctColor(pctValue))
                     .monospacedDigit()
-                HStack(spacing: 4) {
+                HStack(spacing: Theme.Spacing.xxs) {
                     Image(systemName: pctLabel == "Greens in Reg" ? "flag.fill" : "arrow.up.right")
                         .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.black.opacity(0.35))
+                        .foregroundStyle(Theme.Colors.textTertiary)
                     Text(pctLabel)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.black.opacity(0.40))
+                        .font(Theme.Typography.captionSmall)
+                        .foregroundStyle(Theme.Colors.textTertiary)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.bottom, 16)
+            .padding(.bottom, Theme.Spacing.md)
 
             if missTotal > 0 {
                 Text("miss tendency")
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.28))
+                    .foregroundStyle(Theme.Colors.textTertiary)
                     .kerning(0.4)
                     .padding(.bottom, 10)
 
                 missCompass(dirs: dirs)
             }
         }
-        .padding(16)
+        .padding(Theme.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func pctColor(_ text: String) -> Color {
         let num = Int(text.replacingOccurrences(of: "%", with: "")) ?? 0
-        if num >= 60 { return Color(red: 0.353, green: 0.620, blue: 0.365) }
-        if num >= 40 { return .black }
-        return Color(red: 0.70, green: 0.15, blue: 0.15)
+        if num >= 60 { return Theme.Colors.success }
+        if num >= 40 { return Theme.Colors.textPrimary }
+        return Theme.Colors.error
     }
 
     private func missCompass(dirs: DirFractions) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: Theme.Spacing.xxs) {
             dirBubble(label: "Long", fraction: dirs.long)
-            HStack(spacing: 6) {
+            HStack(spacing: Theme.Spacing.xxs + 2) {
                 dirBubble(label: "Left", fraction: dirs.left)
                 compassRose
                 dirBubble(label: "Right", fraction: dirs.right)
@@ -561,10 +604,10 @@ struct StatsView: View {
     private var compassRose: some View {
         ZStack {
             Circle()
-                .stroke(Color.black.opacity(0.14), lineWidth: 1.5)
+                .stroke(Theme.Colors.textTertiary.opacity(0.5), lineWidth: 1.5)
                 .frame(width: 30, height: 30)
             Circle()
-                .fill(Color.black.opacity(0.06))
+                .fill(Theme.Colors.whisperBorder)
                 .frame(width: 10, height: 10)
         }
     }
@@ -581,16 +624,17 @@ struct StatsView: View {
         }
         return VStack(spacing: 1) {
             Text("\(pct)%")
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(Color.black.opacity(alpha))
+                .font(Theme.Typography.caption)
+                .fontWeight(.bold)
+                .foregroundStyle(Theme.Colors.textPrimary.opacity(alpha))
                 .monospacedDigit()
-            HStack(spacing: 2) {
+            HStack(spacing: Theme.Spacing.xxxs) {
                 Image(systemName: icon)
                     .font(.system(size: 7, weight: .bold))
                 Text(label)
                     .font(.system(size: 9, weight: .medium))
             }
-            .foregroundStyle(Color.black.opacity(alpha * 0.60))
+            .foregroundStyle(Theme.Colors.textPrimary.opacity(alpha * 0.60))
         }
         .frame(width: 46)
     }
@@ -607,34 +651,34 @@ struct StatsView: View {
             Divider().opacity(0.5)
             parTypeRow(label: "Par 5", avg: p5, maxVal: maxVal)
         }
-        .padding(.horizontal, 18)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .padding(.horizontal, Theme.Spacing.cardPadding)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     private func parTypeRow(label: String, avg: Double, maxVal: Double) -> some View {
         let fraction = CGFloat(max(0, avg / maxVal))
         let valueText = avg >= 0 ? String(format: "+%.2f", avg) : String(format: "%.2f", avg)
         let barColor: Color = avg <= 0.3
-            ? Color(red: 0.353, green: 0.620, blue: 0.365)
+            ? Theme.Colors.success
             : avg <= 0.6
-                ? Color(red: 0.94, green: 0.67, blue: 0.16)
-                : Color(red: 0.70, green: 0.15, blue: 0.15)
+                ? Theme.Colors.warning
+                : Theme.Colors.error
         let valueColor: Color = avg <= 0.3
-            ? Color(red: 0.353, green: 0.620, blue: 0.365)
+            ? Theme.Colors.success
             : avg <= 0.6
-                ? Color(red: 0.72, green: 0.52, blue: 0.00)
-                : Color(red: 0.70, green: 0.15, blue: 0.15)
-        return HStack(spacing: 12) {
-            Text(label).font(.system(size: 13, weight: .semibold)).foregroundStyle(.black).frame(width: 46, alignment: .leading)
+                ? Theme.Colors.warning
+                : Theme.Colors.error
+        return HStack(spacing: Theme.Spacing.sm) {
+            Text(label).font(Theme.Typography.caption).fontWeight(.semibold).foregroundStyle(Theme.Colors.textPrimary).frame(width: 46, alignment: .leading)
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 4).fill(Color.black.opacity(0.07)).frame(height: 7)
+                RoundedRectangle(cornerRadius: 4).fill(Theme.Colors.whisperBorder).frame(height: 7)
                 RoundedRectangle(cornerRadius: 4).fill(barColor)
                     .frame(maxWidth: .infinity, maxHeight: 7).scaleEffect(x: fraction, y: 1, anchor: .leading)
             }
-            Text(valueText).font(.system(size: 13, weight: .semibold)).foregroundStyle(valueColor)
+            Text(valueText).font(Theme.Typography.caption).fontWeight(.semibold).foregroundStyle(valueColor)
                 .monospacedDigit().frame(width: 40, alignment: .trailing)
         }
         .padding(.vertical, 14)
@@ -644,35 +688,35 @@ struct StatsView: View {
 
     private var hazardsCard: some View {
         HStack(spacing: 0) {
-            hazardCell(icon: "figure.golf", label: "Bunker", avg: avgBunkerPerRound, color: Color(red: 0.82, green: 0.65, blue: 0.38))
+            hazardCell(icon: "figure.golf", label: "Bunker", avg: avgBunkerPerRound, color: Theme.Colors.bunker)
             Divider().frame(height: 44)
-            hazardCell(icon: "drop.fill",   label: "Water",  avg: avgWaterPerRound, color: Color(red: 0.36, green: 0.57, blue: 0.90))
+            hazardCell(icon: "drop.fill",   label: "Water",  avg: avgWaterPerRound, color: Theme.Colors.water)
             Divider().frame(height: 44)
-            hazardCell(icon: "xmark",       label: "OOB",    avg: avgOOBPerRound, color: Color(red: 0.88, green: 0.28, blue: 0.24))
+            hazardCell(icon: "xmark",       label: "OOB",    avg: avgOOBPerRound, color: Theme.Colors.error)
         }
-        .padding(.vertical, 18)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .padding(.vertical, Theme.Spacing.cardPadding)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     private func hazardCell(icon: String, label: String, avg: Double, color: Color) -> some View {
         VStack(spacing: 5) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
+                .font(Theme.Typography.caption)
                 .foregroundStyle(color.opacity(0.65))
             Text(String(format: "%.1f", avg))
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(avg > 1.0 ? color : .black)
+                .font(Theme.Typography.title)
+                .foregroundStyle(avg > 1.0 ? color : Theme.Colors.textPrimary)
                 .monospacedDigit()
             VStack(spacing: 1) {
                 Text(label)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.45))
+                    .font(Theme.Typography.captionSmall)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                 Text("per round")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.28))
+                    .font(Theme.Typography.captionSmall)
+                    .foregroundStyle(Theme.Colors.textTertiary)
             }
         }
         .frame(maxWidth: .infinity)
@@ -682,25 +726,25 @@ struct StatsView: View {
 
     private var puttingCard: some View {
         HStack(spacing: 0) {
-            puttingCell(value: String(format: "%.1f", avgPuttsPerRound), label: "Per Round", color: .black)
+            puttingCell(value: String(format: "%.1f", avgPuttsPerRound), label: "Per Round", color: Theme.Colors.textPrimary)
             Divider().frame(height: 32)
             puttingCell(value: String(format: "%.2f", avgPuttsPerHole), label: "Per Hole",
-                        color: avgPuttsPerHole <= 1.8 ? Color(red: 0.353, green: 0.620, blue: 0.365) : .black)
+                        color: avgPuttsPerHole <= 1.8 ? Theme.Colors.success : Theme.Colors.textPrimary)
             Divider().frame(height: 32)
             puttingCell(value: "\(threePuttCount)", label: "3-Putts",
-                        color: threePuttCount > 0 ? Color(red: 0.70, green: 0.15, blue: 0.15) : .black)
+                        color: threePuttCount > 0 ? Theme.Colors.error : Theme.Colors.textPrimary)
         }
-        .padding(.vertical, 16)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .padding(.vertical, Theme.Spacing.md)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
-    private func puttingCell(value: String, label: String, color: Color = .black) -> some View {
-        VStack(spacing: 4) {
-            Text(value).font(.system(size: 22, weight: .bold)).foregroundStyle(color).monospacedDigit()
-            Text(label).font(.system(size: 12, weight: .medium)).foregroundStyle(.black.opacity(0.45))
+    private func puttingCell(value: String, label: String, color: Color = Theme.Colors.textPrimary) -> some View {
+        VStack(spacing: Theme.Spacing.xxs) {
+            Text(value).font(Theme.Typography.title).foregroundStyle(color).monospacedDigit()
+            Text(label).font(Theme.Typography.captionSmall).foregroundStyle(Theme.Colors.textSecondary)
         }
         .frame(maxWidth: .infinity)
     }
@@ -708,6 +752,7 @@ struct StatsView: View {
 
 private struct RadarChartView: View {
     let metrics: [RadarMetric]
+    var radarAnimated: Bool = true
 
     var body: some View {
         GeometryReader { geo in
@@ -723,7 +768,7 @@ private struct RadarChartView: View {
                         radius: radius * CGFloat(level) / 4,
                         values: Array(repeating: 1, count: metrics.count)
                     )
-                    .stroke(Color.black.opacity(level == 4 ? 0.12 : 0.06), lineWidth: 1)
+                    .stroke(Theme.Colors.whisperBorder.opacity(level == 4 ? 1.0 : 0.5), lineWidth: 1)
                 }
 
                 ForEach(Array(metrics.enumerated()), id: \.offset) { index, metric in
@@ -731,18 +776,20 @@ private struct RadarChartView: View {
                         path.move(to: center)
                         path.addLine(to: axisPoint(center: center, radius: radius, index: index, count: metrics.count, value: 1))
                     }
-                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                    .stroke(Theme.Colors.whisperBorder, lineWidth: 1)
 
                     let labelPoint = axisPoint(center: center, radius: labelRadius, index: index, count: metrics.count, value: 1)
-                    VStack(spacing: 2) {
+                    VStack(spacing: Theme.Spacing.xxxs) {
                         Text(metric.label)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.black)
+                            .font(Theme.Typography.captionSmall)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Theme.Colors.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                         Text("\(Int((metric.score * 100).rounded()))")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.black.opacity(0.45))
+                            .font(Theme.Typography.captionSmall)
+                            .fontWeight(.bold)
+                            .foregroundStyle(Theme.Colors.textTertiary)
                             .monospacedDigit()
                     }
                     .frame(width: 70)
@@ -753,16 +800,20 @@ private struct RadarChartView: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                Color(red: 0.486, green: 0.718, blue: 0.498).opacity(0.28),
-                                Color(red: 0.14, green: 0.35, blue: 0.72).opacity(0.12)
+                                Theme.Colors.approach.opacity(0.28),
+                                Theme.Colors.driving.opacity(0.12)
                             ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
+                    .scaleEffect(radarAnimated ? 1 : 0)
+                    .animation(Theme.Animation.bouncy.delay(0.3), value: radarAnimated)
 
                 radarPolygon(center: center, radius: radius, values: metrics.map(\.score))
-                    .stroke(Color.black, style: StrokeStyle(lineWidth: 2.2, lineJoin: .round))
+                    .stroke(Theme.Colors.accent, style: StrokeStyle(lineWidth: 2.2, lineJoin: .round))
+                    .scaleEffect(radarAnimated ? 1 : 0)
+                    .animation(Theme.Animation.bouncy.delay(0.3), value: radarAnimated)
 
                 ForEach(Array(metrics.enumerated()), id: \.offset) { index, metric in
                     Circle()
@@ -770,6 +821,8 @@ private struct RadarChartView: View {
                         .frame(width: 9, height: 9)
                         .overlay(Circle().stroke(.white, lineWidth: 2))
                         .position(axisPoint(center: center, radius: radius, index: index, count: metrics.count, value: metric.score))
+                        .scaleEffect(radarAnimated ? 1 : 0)
+                        .animation(Theme.Animation.bouncy.delay(0.35 + Double(index) * 0.04), value: radarAnimated)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

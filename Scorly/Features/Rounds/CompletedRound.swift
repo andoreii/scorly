@@ -10,6 +10,7 @@ struct CompletedRound: Identifiable {
     let databaseId: Int?
     let courseName: String
     let courseLocation: String
+    let accentColors: [Color]
     let date: Date
     let par: Int
     let totalScore: Int
@@ -34,9 +35,9 @@ struct CompletedRound: Identifiable {
     }
 
     var scoreColor: Color {
-        if scoreVsPar < 0  { return Color(red: 0.353, green: 0.620, blue: 0.365) }
-        if scoreVsPar > 8  { return Color(red: 0.70, green: 0.15, blue: 0.15) }
-        return .black
+        if scoreVsPar < 0  { return Theme.Colors.underPar }
+        if scoreVsPar > 8  { return Theme.Colors.overPar }
+        return Theme.Colors.textPrimary
     }
 
     var totalPutts: Int {
@@ -95,6 +96,7 @@ extension CompletedRound {
         self.databaseId = row.roundId
         self.courseName = course.courseName
         self.courseLocation = course.location ?? ""
+        self.accentColors = Course.colors(for: course.colorTheme)
 
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"

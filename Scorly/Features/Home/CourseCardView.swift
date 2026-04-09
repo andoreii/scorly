@@ -6,8 +6,6 @@
 import SwiftUI
 
 struct CourseCardView: View {
-    private let cardCornerRadius: CGFloat = 13
-
     let course: Course
     let isSelected: Bool
     var onInfo: (() -> Void)? = nil
@@ -15,11 +13,11 @@ struct CourseCardView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Base gradient
-            RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                 .fill(cardGradient)
 
-            // Subtle top-leading sheen — larger, softer glow
-            RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+            // Subtle top-leading sheen
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                 .fill(
                     LinearGradient(
                         colors: [.white.opacity(0.18), .white.opacity(0.06), .clear],
@@ -28,10 +26,10 @@ struct CourseCardView: View {
                     )
                 )
 
-            // Bottom edge vignette for extra depth
+            // Bottom edge vignette
             VStack {
                 Spacer()
-                RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [.clear, .black.opacity(0.12)],
@@ -41,10 +39,10 @@ struct CourseCardView: View {
                     )
                     .frame(height: 80)
             }
-            .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
 
-            // Border — brighter top edge, faded bottom
-            RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous)
+            // Border
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                 .strokeBorder(
                     LinearGradient(
                         colors: [.white.opacity(0.35), .white.opacity(0.12)],
@@ -64,7 +62,7 @@ struct CourseCardView: View {
                         .lineLimit(2)
 
                     Text(course.location)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(Theme.Typography.caption)
                         .foregroundStyle(.white.opacity(0.70))
                         .lineLimit(1)
                 }
@@ -86,16 +84,16 @@ struct CourseCardView: View {
                     if let tee = displayTee {
                         HStack(alignment: .lastTextBaseline, spacing: 0) {
                             Text(String(format: "%.1f", tee.rating))
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(Theme.Typography.bodySemibold)
                                 .foregroundStyle(.white)
                             Text(" / \(tee.slope)")
-                                .font(.system(size: 13, weight: .medium))
+                                .font(Theme.Typography.caption)
                                 .foregroundStyle(.white.opacity(0.70))
                         }
                     }
                 }
             }
-            .padding(22)
+            .padding(Theme.Spacing.xl)
 
             // Info button — top right, only when selected
             if let onInfo {
@@ -109,7 +107,7 @@ struct CourseCardView: View {
                                 .frame(width: 36, height: 36)
                                 .background(.white.opacity(0.12), in: Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(ScorlyPressStyle())
                     }
                     Spacer()
                 }
@@ -120,12 +118,11 @@ struct CourseCardView: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: 212)
-        .clipShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
-        // Multi-layer shadow for realistic depth
-        .shadow(color: .black.opacity(isSelected ? 0.12 : 0.08), radius: isSelected ? 3 : 2, y: isSelected ? 2 : 1)      // contact shadow
-        .shadow(color: .black.opacity(isSelected ? 0.18 : 0.12), radius: isSelected ? 20 : 12, y: isSelected ? 12 : 6)  // mid shadow
-        .shadow(color: .black.opacity(isSelected ? 0.14 : 0.08), radius: isSelected ? 50 : 28, y: isSelected ? 28 : 16) // ambient glow
-        .contentShape(RoundedRectangle(cornerRadius: cardCornerRadius, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .shadow(color: .black.opacity(isSelected ? 0.12 : 0.08), radius: isSelected ? 3 : 2, y: isSelected ? 2 : 1)
+        .shadow(color: .black.opacity(isSelected ? 0.18 : 0.12), radius: isSelected ? 20 : 12, y: isSelected ? 12 : 6)
+        .shadow(color: .black.opacity(isSelected ? 0.14 : 0.08), radius: isSelected ? 50 : 28, y: isSelected ? 28 : 16)
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
     }
 
     private var cardGradient: LinearGradient {
@@ -143,7 +140,7 @@ struct CourseCardView: View {
                 .foregroundStyle(.white)
                 .monospacedDigit()
             Text(label)
-                .font(.system(size: 10, weight: .medium))
+                .font(Theme.Typography.captionSmall)
                 .foregroundStyle(.white.opacity(0.42))
         }
         .padding(.trailing, 14)

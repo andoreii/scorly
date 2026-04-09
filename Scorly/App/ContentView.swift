@@ -8,18 +8,21 @@ import SwiftUI
 struct ContentView: View {
     @Environment(AuthService.self) private var auth
     @StateObject private var roundStore = RoundStore()
+    @State private var tabMotion = TabMotionCoordinator()
     @State private var selectedTab = LaunchOptions.initialTab
 
     var body: some View {
         Group {
             if auth.isLoading {
                 ProgressView()
+                    .tint(Theme.Colors.accent)
             } else if auth.isSignedIn {
                 mainContent
             } else {
                 AuthView()
             }
         }
+        .background(Theme.Colors.canvas)
     }
 
     private var mainContent: some View {
@@ -40,16 +43,22 @@ struct ContentView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
             .ignoresSafeArea()
             .environmentObject(roundStore)
+            .environment(tabMotion)
 
-            // Subtle page indicator — floats above home indicator
             pageIndicator
                 .padding(.bottom, 28)
         }
         .ignoresSafeArea(edges: .bottom)
+        .onAppear {
+            tabMotion.prime(with: selectedTab)
+        }
+        .onChange(of: selectedTab) { _, newValue in
+            tabMotion.transition(to: newValue)
+        }
         .onChange(of: roundStore.pendingDismissToHome) { _, triggered in
             guard triggered else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                withAnimation(Theme.Animation.smooth) {
                     selectedTab = 0
                 }
                 roundStore.pendingDismissToHome = false
@@ -58,7 +67,7 @@ struct ContentView: View {
         .onChange(of: roundStore.pendingDismissToRounds) { _, triggered in
             guard triggered else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                withAnimation(Theme.Animation.smooth) {
                     selectedTab = 2
                 }
                 roundStore.pendingDismissToRounds = false
@@ -70,20 +79,20 @@ struct ContentView: View {
         HStack(spacing: 6) {
             ForEach(0..<4) { i in
                 Capsule()
-                    .fill(i == selectedTab ? Color.black : Color.black.opacity(0.15))
+                    .fill(i == selectedTab ? Theme.Colors.accent : Theme.Colors.accent.opacity(0.15))
                     .frame(
                         width: i == selectedTab ? 20 : 6,
                         height: 6
                     )
-                    .animation(.spring(response: 0.3, dampingFraction: 0.75), value: selectedTab)
+                    .animation(Theme.Animation.snappy, value: selectedTab)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
         .background(
             Capsule()
-                .fill(.white.opacity(0.88))
-                .shadow(color: .black.opacity(0.08), radius: 8, y: 2)
+                .fill(Theme.Colors.surface.opacity(0.92))
+                .themeShadow(Theme.Shadow.subtle)
         )
     }
 }

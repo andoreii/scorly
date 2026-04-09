@@ -10,11 +10,12 @@ import Charts
 struct HomeView: View {
     @Binding var selectedTab: Int
     @EnvironmentObject var roundStore: RoundStore
+    @Environment(AuthService.self) private var auth
     @State private var showResume = false
     @State private var showDeleteConfirm = false
     @State private var rounds: [CompletedRound] = []
     @State private var selectedTrendRoundID: UUID? = nil
-
+    @State private var showSettings = false
 
     // Calendar
     enum CalendarMode { case month, year }
@@ -22,30 +23,31 @@ struct HomeView: View {
     @State private var displayedMonth: Date = Date()
     @State private var selectedYear: Int = Calendar.current.component(.year, from: Date())
 
-    private let cr: CGFloat = 13
-    private let mainCardTopSpacing: CGFloat = 4
-
     var body: some View {
         ZStack {
-            Color(red: 0.97, green: 0.97, blue: 0.98).ignoresSafeArea()
+            Theme.Colors.canvas.ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     header
-                        .padding(.horizontal, 20)
-                        .padding(.top, 8)
+                        .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                        .padding(.top, Theme.Spacing.xs)
+                        .tabReveal(tab: 0, order: 0)
 
                     mainCard
-                        .padding(.horizontal, 20)
-                        .padding(.top, mainCardTopSpacing)
+                        .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                        .padding(.top, Theme.Spacing.xxs)
+                        .tabReveal(tab: 0, order: 1)
 
                     sparklineCard
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
+                        .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                        .padding(.top, Theme.Spacing.sm)
+                        .tabReveal(tab: 0, order: 2)
 
                     calendarCard
-                        .padding(.horizontal, 20)
-                        .padding(.top, 12)
+                        .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                        .padding(.top, Theme.Spacing.sm)
+                        .tabReveal(tab: 0, order: 3)
                 }
                 .padding(.bottom, 80)
             }
@@ -54,17 +56,22 @@ struct HomeView: View {
             if showDeleteConfirm {
                 DeleteRoundPopup(
                     onDelete: {
-                        withAnimation(.easeInOut(duration: 0.18)) { showDeleteConfirm = false }
-                        roundStore.deleteRound()
+                        withAnimation(Theme.Animation.smooth) { showDeleteConfirm = false }
+                        withAnimation(Theme.Animation.bouncy.delay(0.15)) {
+                            roundStore.deleteRound()
+                        }
                     },
                     onCancel: {
-                        withAnimation(.easeInOut(duration: 0.18)) { showDeleteConfirm = false }
+                        withAnimation(Theme.Animation.smooth) { showDeleteConfirm = false }
                     }
                 )
                 .zIndex(99)
-                .transition(.opacity)
-                .animation(.easeInOut(duration: 0.18), value: showDeleteConfirm)
+                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                .animation(Theme.Animation.smooth, value: showDeleteConfirm)
             }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
         }
         .fullScreenCover(isPresented: $showResume) {
             if let round = roundStore.activeRound {
@@ -80,7 +87,9 @@ struct HomeView: View {
         .onChange(of: roundStore.pendingDismissToRounds) { _, triggered in
             if triggered { showResume = false }
         }
-        .task { await loadRounds() }
+        .task {
+            await loadRounds()
+        }
     }
 
     private func loadRounds() async {
@@ -100,15 +109,32 @@ struct HomeView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(greeting)
-                .font(.system(size: 30, weight: .bold))
-                .foregroundStyle(.black)
-            Text(dateString)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.black.opacity(0.38))
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                Text("scorly")
+                    .font(Theme.Typography.title)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                Text(greeting)
+                    .font(Theme.Typography.title2)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                Text(dateString)
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textTertiary)
+            }
+
+            Spacer()
+
+            Button(action: { showSettings = true }) {
+                Text(auth.userInitial)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(Theme.Colors.accent, in: Circle())
+            }
+            .buttonStyle(ScorlyPressStyle())
+            .padding(.top, Theme.Spacing.xxxs)
         }
-        .padding(.bottom, 4)
+        .padding(.bottom, Theme.Spacing.xxs)
     }
 
     private var greeting: String {
@@ -124,14 +150,20 @@ struct HomeView: View {
         return f.string(from: Date())
     }
 
+
     // MARK: - Main card
 
     @ViewBuilder
     private var mainCard: some View {
         if let round = roundStore.activeRound {
             inProgressCard(round: round)
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.95).combined(with: .opacity),
+                    removal: .scale(scale: 0.90).combined(with: .opacity)
+                ))
         } else {
             playRoundCard
+                .transition(.scale(scale: 0.95).combined(with: .opacity))
         }
     }
 
@@ -139,37 +171,34 @@ struct HomeView: View {
 
     private var playRoundCard: some View {
         Button(action: {
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+            withAnimation(Theme.Animation.smooth) {
                 selectedTab = 1
             }
         }) {
             ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: cr, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [
-                                Color(red: 0.32, green: 0.32, blue: 0.34),
-                                Color.black
-                            ],
+                            colors: [Theme.Colors.accentLight, Theme.Colors.accent],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
                     )
-                RoundedRectangle(cornerRadius: cr, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                     .fill(
                         LinearGradient(
-                            colors: [.white.opacity(0.10), .clear],
+                            colors: [.white.opacity(0.12), .clear],
                             startPoint: .topLeading,
                             endPoint: .center
                         )
                     )
-                RoundedRectangle(cornerRadius: cr, style: .continuous)
-                    .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+                RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                    .strokeBorder(.white.opacity(0.15), lineWidth: 1)
 
                 VStack(alignment: .leading, spacing: 0) {
                     ZStack {
                         Circle()
-                            .fill(.white.opacity(0.10))
+                            .fill(.white.opacity(0.12))
                             .frame(width: 52, height: 52)
                         Image(systemName: "play.fill")
                             .font(.system(size: 20, weight: .bold))
@@ -181,24 +210,24 @@ struct HomeView: View {
                         Text("Play Round")
                             .font(.system(size: 28, weight: .bold))
                             .foregroundStyle(.white)
-                        HStack(spacing: 4) {
+                        HStack(spacing: Theme.Spacing.xxs) {
                             Text("Choose a course")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(.white.opacity(0.50))
+                                .font(Theme.Typography.caption)
+                                .foregroundStyle(.white.opacity(0.55))
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(.white.opacity(0.35))
                         }
                     }
                 }
-                .padding(22)
+                .padding(Theme.Spacing.xl)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 212)
-            .clipShape(RoundedRectangle(cornerRadius: cr, style: .continuous))
-            .shadow(color: .black.opacity(0.22), radius: 20, y: 8)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+            .themeShadow(Theme.Shadow.prominent)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ScorlyPressStyle())
     }
 
     // MARK: - Data
@@ -227,22 +256,20 @@ struct HomeView: View {
             (barScores.suffix(2).reduce(0, +) / 2) < (barScores.prefix(2).reduce(0, +) / 2)
         let trendLabel  = trendDown ? "Improving" : "Trending up"
         let trendIcon   = trendDown ? "arrow.down.right" : "arrow.up.right"
-        let trendColor  = trendDown
-            ? Color(red: 0.353, green: 0.620, blue: 0.365)
-            : Color(red: 0.70, green: 0.15, blue: 0.15)
+        let trendColor = trendDown ? Theme.Colors.success : Theme.Colors.error
 
-        return VStack(alignment: .leading, spacing: 12) {
+        return VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
             HStack(alignment: .center) {
                 Text("Recent Scores")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.title3)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                 Spacer()
                 if barScores.count >= 2 {
-                    HStack(spacing: 4) {
+                    HStack(spacing: Theme.Spacing.xxs) {
                         Image(systemName: trendIcon)
                             .font(.system(size: 10, weight: .bold))
                         Text(trendLabel)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(Theme.Typography.captionSmall)
                     }
                     .foregroundStyle(trendColor)
                 }
@@ -250,22 +277,22 @@ struct HomeView: View {
 
             if barRounds.isEmpty {
                 Text("No rounds yet.")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.30))
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .frame(height: 100)
             } else {
                 barChart
             }
         }
-        .padding(18)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: cr, style: .continuous))
+        .padding(Theme.Spacing.cardPadding)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: cr, style: .continuous)
-                .strokeBorder(.black.opacity(0.06), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .stroke(Theme.Colors.whisperBorder, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     private var indexedBarRounds: [(index: Int, round: CompletedRound)] {
@@ -273,9 +300,7 @@ struct HomeView: View {
     }
 
     private func barColor(for round: CompletedRound) -> Color {
-        round.totalScore <= barAvg
-            ? Color(red: 0.353, green: 0.620, blue: 0.365)
-            : Color(red: 0.70, green: 0.15, blue: 0.15)
+        round.totalScore <= barAvg ? Theme.Colors.success : Theme.Colors.error
     }
 
     private func barLabel(for index: Int) -> String {
@@ -285,7 +310,7 @@ struct HomeView: View {
     private var barChart: some View {
         Chart {
             RuleMark(y: .value("Avg", Double(barAvg)))
-                .foregroundStyle(.black.opacity(0.14))
+                .foregroundStyle(Theme.Colors.textTertiary.opacity(0.4))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 2]))
 
             ForEach(indexedBarRounds, id: \.round.id) { item in
@@ -293,7 +318,7 @@ struct HomeView: View {
                     x: .value("Index", barLabel(for: item.index)),
                     yStart: .value("Base", Double(barMinY)),
                     yEnd: .value("Score", Double(item.round.totalScore)),
-                    width: .ratio(0.55)
+                    width: .fixed(20)
                 )
                 .foregroundStyle(barColor(for: item.round))
                 .cornerRadius(4)
@@ -305,7 +330,7 @@ struct HomeView: View {
                     x: .value("Index", barLabel(for: selIdx)),
                     yStart: .value("Base", Double(barMinY)),
                     yEnd: .value("Score", Double(selectedBarRound.totalScore)),
-                    width: .ratio(0.55)
+                    width: .fixed(20)
                 )
                 .foregroundStyle(.clear)
                 .annotation(position: .top, spacing: 6) {
@@ -319,8 +344,8 @@ struct HomeView: View {
                 AxisValueLabel {
                     if let label = value.as(String.self), let idx = Int(label), idx < barRounds.count {
                         Text(barRounds[idx].date, format: .dateTime.day())
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(Color.black.opacity(0.35))
+                            .font(Theme.Typography.captionSmall)
+                            .foregroundStyle(Theme.Colors.textTertiary)
                     }
                 }
             }
@@ -328,10 +353,10 @@ struct HomeView: View {
         .chartYAxis {
             AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) {
                 AxisValueLabel()
-                    .font(.system(size: 9))
-                    .foregroundStyle(Color.black.opacity(0.30))
+                    .font(Theme.Typography.captionSmall)
+                    .foregroundStyle(Theme.Colors.textTertiary)
                 AxisGridLine()
-                    .foregroundStyle(Color.black.opacity(0.06))
+                    .foregroundStyle(Theme.Colors.divider.opacity(0.5))
             }
         }
         .chartOverlay { proxy in
@@ -361,24 +386,27 @@ struct HomeView: View {
                     })
             }
         }
-        .frame(height: 130)
+        .frame(height: 200)
     }
 
     private func barCallout(value: Int, color: Color) -> some View {
         Text("\(value)")
             .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(color.opacity(0.90))
+            .monospacedDigit()
+            .foregroundStyle(color)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
             .background(
                 Capsule()
-                    .fill(.white.opacity(0.98))
-                    .shadow(color: .black.opacity(0.10), radius: 4, y: 2)
+                    .fill(Theme.Colors.surface)
+                    .themeShadow(Theme.Shadow.subtle)
             )
             .overlay(
                 Capsule()
-                    .strokeBorder(.black.opacity(0.08), lineWidth: 1)
+                    .strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1)
             )
+            .transition(.scale(scale: 0.8).combined(with: .opacity))
+            .animation(Theme.Animation.bouncy, value: selectedTrendRoundID)
     }
 
     // MARK: - Calendar card
@@ -387,22 +415,22 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .center) {
                 Text("Activity")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.title3)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                 Spacer()
                 if calendarMode == .year {
                     HStack(spacing: 2) {
                         Button { selectedYear -= 1 } label: {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(.black.opacity(0.45))
+                                .foregroundStyle(Theme.Colors.textSecondary)
                                 .frame(width: 26, height: 26)
                         }
                         .buttonStyle(.plain)
 
                         Text(String(selectedYear))
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(.black)
+                            .font(Theme.Typography.caption)
+                            .foregroundStyle(Theme.Colors.textPrimary)
                             .monospacedDigit()
                             .frame(minWidth: 38, alignment: .center)
 
@@ -412,7 +440,7 @@ struct HomeView: View {
                         } label: {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(selectedYear < Calendar.current.component(.year, from: Date()) ? .black.opacity(0.45) : .black.opacity(0.18))
+                                .foregroundStyle(selectedYear < Calendar.current.component(.year, from: Date()) ? Theme.Colors.textSecondary : Theme.Colors.textTertiary)
                                 .frame(width: 26, height: 26)
                         }
                         .buttonStyle(.plain)
@@ -426,26 +454,33 @@ struct HomeView: View {
 
             if calendarMode == .month {
                 monthCalendarView
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.98)),
+                        removal: .opacity
+                    ))
             } else {
                 yearCalendarView
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .scale(scale: 0.98)),
+                        removal: .opacity
+                    ))
             }
 
-            // Legend
             HStack(spacing: 14) {
                 Spacer()
-                calLegend(color: Color.black.opacity(0.08), label: "No round")
-                calLegend(color: Color.black.opacity(0.78), label: "Played")
-                calLegend(color: Color(red: 0.353, green: 0.620, blue: 0.365), label: "Good round")
+                calLegend(color: Theme.Colors.accent.opacity(0.08), label: "No round")
+                calLegend(color: Theme.Colors.accent.opacity(0.6), label: "Played")
+                calLegend(color: Theme.Colors.success, label: "Good round")
             }
         }
-        .padding(18)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: cr, style: .continuous))
+        .padding(Theme.Spacing.cardPadding)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: cr, style: .continuous)
-                .strokeBorder(.black.opacity(0.06), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .stroke(Theme.Colors.whisperBorder, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     private func recessedToggle<T: Equatable>(
@@ -457,20 +492,21 @@ struct HomeView: View {
             ForEach(Array(options.enumerated()), id: \.offset) { _, option in
                 let isSelected = selected == option.1
                 Button {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                    withAnimation(Theme.Animation.snappy) {
                         onChange(option.1)
                     }
                 } label: {
                     Text(option.0)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(isSelected ? .black : .black.opacity(0.40))
+                        .font(Theme.Typography.captionSmall)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(isSelected ? Theme.Colors.textPrimary : Theme.Colors.textTertiary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 28)
                         .background(
                             Group {
                                 if isSelected {
                                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                        .fill(.white)
+                                        .fill(Theme.Colors.surface)
                                         .shadow(color: .black.opacity(0.08), radius: 3, y: 1)
                                 }
                             }
@@ -482,7 +518,7 @@ struct HomeView: View {
         .padding(2)
         .background(
             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(.black.opacity(0.06))
+                .fill(Theme.Colors.accent.opacity(0.06))
         )
         .frame(width: CGFloat(options.count) * 30)
     }
@@ -493,8 +529,8 @@ struct HomeView: View {
                 .fill(color)
                 .frame(width: 10, height: 10)
             Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.black.opacity(0.45))
+                .font(Theme.Typography.captionSmall)
+                .foregroundStyle(Theme.Colors.textTertiary)
         }
     }
 
@@ -505,16 +541,15 @@ struct HomeView: View {
         let days = monthDays(for: displayedMonth)
 
         return VStack(spacing: 8) {
-            // Month navigation
             HStack {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.20)) {
+                    withAnimation(Theme.Animation.snappy) {
                         displayedMonth = cal.date(byAdding: .month, value: -1, to: displayedMonth) ?? displayedMonth
                     }
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.black.opacity(0.45))
+                        .foregroundStyle(Theme.Colors.textSecondary)
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
@@ -522,13 +557,14 @@ struct HomeView: View {
                 Spacer()
 
                 Text(monthYearString(displayedMonth))
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.Colors.textPrimary)
 
                 Spacer()
 
                 Button {
-                    withAnimation(.easeInOut(duration: 0.20)) {
+                    withAnimation(Theme.Animation.snappy) {
                         if let next = cal.date(byAdding: .month, value: 1, to: displayedMonth),
                            cal.compare(next, to: Date(), toGranularity: .month) != .orderedDescending {
                             displayedMonth = next
@@ -537,7 +573,7 @@ struct HomeView: View {
                 } label: {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(.black.opacity(0.45))
+                        .foregroundStyle(Theme.Colors.textSecondary)
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.plain)
@@ -548,8 +584,8 @@ struct HomeView: View {
             HStack(spacing: 4) {
                 ForEach(0..<7, id: \.self) { i in
                     Text(headers[i])
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.black.opacity(0.28))
+                        .font(Theme.Typography.captionSmall)
+                        .foregroundStyle(Theme.Colors.textTertiary)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -578,19 +614,19 @@ struct HomeView: View {
 
             ZStack {
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(isFuture ? Color.black.opacity(0.03) : cellColor(for: date))
+                    .fill(isFuture ? Theme.Colors.accent.opacity(0.03) : cellColor(for: date))
 
                 if isToday && !hasRound {
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .strokeBorder(Color.black.opacity(0.28), lineWidth: 1.5)
+                        .strokeBorder(Theme.Colors.accent.opacity(0.4), lineWidth: 1.5)
                 }
 
                 Text("\(cal.component(.day, from: date))")
                     .font(.system(size: 10, weight: isToday ? .bold : .medium))
                     .foregroundStyle(
-                        isFuture ? Color.black.opacity(0.15) :
+                        isFuture ? Theme.Colors.textTertiary.opacity(0.4) :
                         hasRound ? Color.white :
-                        Color.black.opacity(0.45)
+                        Theme.Colors.textSecondary
                     )
             }
             .frame(maxWidth: .infinity)
@@ -621,7 +657,7 @@ struct HomeView: View {
                     ForEach(monthLabels, id: \.col) { item in
                         Text(item.label)
                             .font(.system(size: 8, weight: .semibold))
-                            .foregroundStyle(.black.opacity(0.38))
+                            .foregroundStyle(Theme.Colors.textTertiary)
                             .position(x: CGFloat(item.col) * step + cellSize / 2,
                                       y: 6)
                     }
@@ -638,7 +674,7 @@ struct HomeView: View {
                                         .frame(width: cellSize, height: cellSize)
                                 } else {
                                     RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                                        .fill(Color.black.opacity(0.04))
+                                        .fill(Theme.Colors.accent.opacity(0.04))
                                         .frame(width: cellSize, height: cellSize)
                                 }
                             }
@@ -660,11 +696,11 @@ struct HomeView: View {
 
     /// Color for year grid — future dates get a very faint fill, past dates get normal coloring
     private func yearCellColor(for date: Date) -> Color {
-        if date > Date() { return Color.black.opacity(0.04) }
-        guard let round = roundOnDay(date) else { return Color.black.opacity(0.10) }
+        if date > Date() { return Theme.Colors.accent.opacity(0.04) }
+        guard let round = roundOnDay(date) else { return Theme.Colors.accent.opacity(0.08) }
         return round.totalScore <= barAvg
-            ? Color(red: 0.353, green: 0.620, blue: 0.365)
-            : Color.black.opacity(0.78)
+            ? Theme.Colors.success
+            : Theme.Colors.accent.opacity(0.6)
     }
 
     /// Returns (column index, month label) for each month boundary in the year grid
@@ -692,10 +728,10 @@ struct HomeView: View {
     }
 
     private func cellColor(for date: Date) -> Color {
-        guard let round = roundOnDay(date) else { return Color.black.opacity(0.08) }
+        guard let round = roundOnDay(date) else { return Theme.Colors.accent.opacity(0.08) }
         return round.totalScore <= barAvg
-            ? Color(red: 0.353, green: 0.620, blue: 0.365)
-            : Color.black.opacity(0.78)
+            ? Theme.Colors.success
+            : Theme.Colors.accent.opacity(0.6)
     }
 
     private func monthDays(for month: Date) -> [Date?] {
@@ -758,7 +794,7 @@ struct HomeView: View {
     private func inProgressCard(round: ActiveRoundData) -> some View {
         Button(action: { showResume = true }) {
             ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: cr, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: round.course.accentColors,
@@ -766,7 +802,7 @@ struct HomeView: View {
                             endPoint: .trailing
                         )
                     )
-                RoundedRectangle(cornerRadius: cr, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                     .fill(
                         LinearGradient(
                             colors: [.white.opacity(0.13), .clear],
@@ -774,7 +810,7 @@ struct HomeView: View {
                             endPoint: .center
                         )
                     )
-                RoundedRectangle(cornerRadius: cr, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                     .strokeBorder(.white.opacity(0.25), lineWidth: 1)
 
                 VStack(alignment: .leading, spacing: 0) {
@@ -790,9 +826,9 @@ struct HomeView: View {
                         let delta = round.scoreVsPar
                         let label = delta == 0 ? "E" : (delta > 0 ? "+\(delta)" : "\(delta)")
                         let bg: Color = delta < 0
-                            ? Color(red: 0.486, green: 0.718, blue: 0.498)
+                            ? Theme.Colors.underPar
                             : delta == 0 ? Color.white.opacity(0.20)
-                            : Color(red: 0.88, green: 0.28, blue: 0.24)
+                            : Theme.Colors.overPar
                         Text(label)
                             .font(.system(size: 16, weight: .black))
                             .foregroundStyle(.white)
@@ -809,12 +845,14 @@ struct HomeView: View {
                             .foregroundStyle(.white)
                             .minimumScaleFactor(0.75)
                             .lineLimit(1)
-                        HStack(spacing: 12) {
+                        HStack(spacing: Theme.Spacing.sm) {
                             Label("Hole \(round.currentHole.number) of \(round.holes.count)", systemImage: "flag.fill")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(Theme.Typography.captionSmall)
+                                .fontWeight(.semibold)
                                 .foregroundStyle(.white.opacity(0.72))
                             Label("\(round.playedCount) played", systemImage: "checkmark.circle.fill")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(Theme.Typography.captionSmall)
+                                .fontWeight(.semibold)
                                 .foregroundStyle(.white.opacity(0.72))
                         }
                     }
@@ -822,13 +860,14 @@ struct HomeView: View {
                     HStack(alignment: .center) {
                         HStack(spacing: 5) {
                             Text("Resume Round")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(Theme.Typography.caption)
+                                .fontWeight(.semibold)
                             Image(systemName: "arrow.right")
                                 .font(.system(size: 11, weight: .bold))
                         }
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, Theme.Spacing.xs)
                         .background(Capsule().fill(.white.opacity(0.18)))
 
                         Spacer()
@@ -844,13 +883,13 @@ struct HomeView: View {
                     }
                     .padding(.top, 10)
                 }
-                .padding(22)
+                .padding(Theme.Spacing.xl)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 212)
-            .clipShape(RoundedRectangle(cornerRadius: cr, style: .continuous))
-            .shadow(color: .black.opacity(0.14), radius: 20, y: 8)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+            .themeShadow(Theme.Shadow.medium)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ScorlyPressStyle())
     }
 }

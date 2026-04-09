@@ -132,34 +132,37 @@ struct RoundsView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.97, green: 0.97, blue: 0.98).ignoresSafeArea()
+            Theme.Colors.canvas.ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Rounds")
-                        .font(.system(size: 38, weight: .bold))
-                        .foregroundStyle(.black)
-                        .padding(.bottom, 20)
+                        .font(Theme.Typography.largeTitle)
+                        .foregroundStyle(Theme.Colors.textPrimary)
+                        .tabReveal(tab: 2, order: 0)
+                        .padding(.bottom, Theme.Spacing.lg)
 
                     chartCard
-                        .padding(.bottom, 20)
+                        .tabReveal(tab: 2, order: 1)
+                        .padding(.bottom, Theme.Spacing.lg)
 
                     VStack(spacing: 0) {
                         ForEach(Array(allRounds.reversed().enumerated()), id: \.element.id) { idx, round in
                             if idx > 0 {
-                                Divider().padding(.horizontal, 16)
+                                Divider().padding(.horizontal, Theme.Spacing.md)
                             }
                             roundRow(round)
                                 .onTapGesture { selectedRound = round }
                         }
                     }
-                    .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-                    .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+                    .background(Theme.Colors.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+                    .themeShadow(Theme.Shadow.subtle)
+                    .tabReveal(tab: 2, order: 2)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
+                .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                .padding(.top, Theme.Spacing.xs)
                 .padding(.bottom, 100)
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -208,35 +211,35 @@ struct RoundsView: View {
             // Header row: title + filter button
             HStack(alignment: .center) {
                 Text("Score Trend")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.title3)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                 Spacer()
                 Button { showFilter = true } label: {
                     ZStack(alignment: .topTrailing) {
                         Image(systemName: "line.3.horizontal.decrease")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.black)
+                            .font(Theme.Typography.title3)
+                            .foregroundStyle(Theme.Colors.textPrimary)
                             .frame(width: 34, height: 34)
                             .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(.black.opacity(0.06))
+                                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                                    .fill(Theme.Colors.whisperBorder)
                             )
                         if chartFilter.activeCount > 0 {
                             Circle()
-                                .fill(Color.black)
+                                .fill(Theme.Colors.textPrimary)
                                 .frame(width: 8, height: 8)
                                 .offset(x: 2, y: -2)
                         }
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ScorlyPressStyle())
             }
-            .padding(.bottom, 16)
+            .padding(.bottom, Theme.Spacing.md)
 
             if chartRounds.isEmpty {
                 Text("No rounds match the current filters.")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.30))
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .frame(height: 160)
             } else {
@@ -247,14 +250,14 @@ struct RoundsView: View {
                     legendItem(label: "Par", opacity: 0.18, dash: [4, 3])
                     legendItem(label: "HCP \(String(format: "%.1f", computedHandicapIndex))", opacity: 0.42, dash: [5, 4])
                 }
-                .padding(.top, 8)
+                .padding(.top, Theme.Spacing.xs)
             }
         }
-        .padding(18)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .padding(Theme.Spacing.cardPadding)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     // MARK: – Chart
@@ -262,11 +265,11 @@ struct RoundsView: View {
     private var roundsChart: some View {
         Chart {
             RuleMark(y: .value("Par", chartParValue))
-                .foregroundStyle(.black.opacity(0.18))
+                .foregroundStyle(Theme.Colors.textPrimary.opacity(0.18))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
 
             RuleMark(y: .value("HCP", chartHandicapValue))
-                .foregroundStyle(.black.opacity(0.42))
+                .foregroundStyle(Theme.Colors.textPrimary.opacity(0.42))
                 .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
 
             ForEach(indexedChartRounds, id: \.round.id) { item in
@@ -276,7 +279,7 @@ struct RoundsView: View {
                     yEnd: .value("Score", scoreForRound(item.round))
                 )
                 .foregroundStyle(LinearGradient(
-                    colors: [.black.opacity(0.08), .black.opacity(0.01)],
+                    colors: [Theme.Colors.textPrimary.opacity(0.08), Theme.Colors.textPrimary.opacity(0.01)],
                     startPoint: .top, endPoint: .bottom
                 ))
                 .interpolationMethod(.monotone)
@@ -287,7 +290,7 @@ struct RoundsView: View {
                     x: .value("Index", item.index),
                     y: .value("Score", scoreForRound(item.round))
                 )
-                .foregroundStyle(.black)
+                .foregroundStyle(Theme.Colors.textPrimary)
                 .interpolationMethod(.monotone)
                 .lineStyle(StrokeStyle(lineWidth: showingAll ? 2 : 2.5))
 
@@ -331,21 +334,21 @@ struct RoundsView: View {
                                 Text(date, format: .dateTime.month(.abbreviated))
                                 Text(date, format: .dateTime.day())
                             }
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(Color.black.opacity(0.40))
+                            .font(Theme.Typography.captionSmall)
+                            .foregroundStyle(Theme.Colors.textTertiary)
                         }
                     }
                     AxisTick()
-                    AxisGridLine().foregroundStyle(Color.black.opacity(0.06))
+                    AxisGridLine().foregroundStyle(Theme.Colors.whisperBorder)
                 }
             }
         }
         .chartYAxis {
             AxisMarks(position: .leading, values: .automatic(desiredCount: 4)) {
                 AxisValueLabel()
-                    .font(.system(size: 10))
-                    .foregroundStyle(Color.black.opacity(0.40))
-                AxisGridLine().foregroundStyle(Color.black.opacity(0.06))
+                    .font(Theme.Typography.captionSmall)
+                    .foregroundStyle(Theme.Colors.textTertiary)
+                AxisGridLine().foregroundStyle(Theme.Colors.whisperBorder)
             }
         }
         .chartOverlay { proxy in
@@ -383,25 +386,26 @@ struct RoundsView: View {
         let idx   = computedHandicapIndex
         let adj   = chartFilter.segment == .full18 ? Int(idx.rounded()) : Int((idx / 2).rounded())
         return score <= par + adj
-            ? Color(red: 0.353, green: 0.620, blue: 0.365)
-            : Color(red: 0.70, green: 0.15, blue: 0.15)
+            ? Theme.Colors.success
+            : Theme.Colors.error
     }
 
     private func roundScoreCallout(value: Int, color: Color) -> some View {
         Text("\(value)")
-            .font(.system(size: 9, weight: .bold))
+            .font(Theme.Typography.captionSmall)
+            .fontWeight(.bold)
             .foregroundStyle(color)
             .monospacedDigit()
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
-            .background(Capsule().fill(.white.opacity(0.98)).shadow(color: .black.opacity(0.10), radius: 4, y: 2))
-            .overlay(Capsule().strokeBorder(.black.opacity(0.08), lineWidth: 1))
+            .background(Capsule().fill(Theme.Colors.surface.opacity(0.98)).shadow(color: Theme.Colors.textPrimary.opacity(0.10), radius: 4, y: 2))
+            .overlay(Capsule().strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
     }
 
     private func legendItem(label: String, opacity: Double, dash: [CGFloat]) -> some View {
         HStack(spacing: 5) {
             Rectangle()
-                .fill(Color.black.opacity(opacity))
+                .fill(Theme.Colors.textPrimary.opacity(opacity))
                 .frame(width: 16, height: 1.5)
                 .overlay(GeometryReader { geo in
                     Path { path in
@@ -412,11 +416,11 @@ struct RoundsView: View {
                             x += dash[0] + (dash.count > 1 ? dash[1] : 0)
                         }
                     }
-                    .stroke(Color.black.opacity(opacity), lineWidth: 1.5)
+                    .stroke(Theme.Colors.textPrimary.opacity(opacity), lineWidth: 1.5)
                 })
             Text(label)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.black.opacity(0.45))
+                .font(Theme.Typography.captionSmall)
+                .foregroundStyle(Theme.Colors.textSecondary)
         }
     }
 
@@ -426,38 +430,39 @@ struct RoundsView: View {
         HStack(spacing: 14) {
             VStack(spacing: 2) {
                 Text(round.scoreVsParText)
-                    .font(.system(size: 18, weight: .bold))
+                    .font(Theme.Typography.title2)
                     .foregroundStyle(round.scoreColor)
                     .monospacedDigit()
                 Text("\(round.totalScore)")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.45))
+                    .font(Theme.Typography.captionSmall)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                     .monospacedDigit()
             }
             .frame(width: 46)
 
-            Rectangle().fill(.black.opacity(0.08)).frame(width: 1, height: 34)
+            Rectangle().fill(Theme.Colors.whisperBorder).frame(width: 1, height: 34)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(round.courseName)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.black)
+                    .font(Theme.Typography.bodyMedium)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Theme.Colors.textPrimary)
                 HStack(spacing: 6) {
                     Text(round.date, format: .dateTime.month(.abbreviated).day().year())
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.black.opacity(0.45))
+                        .font(Theme.Typography.captionSmall)
+                        .foregroundStyle(Theme.Colors.textSecondary)
                     if !round.conditions.isEmpty {
-                        Text("·")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.black.opacity(0.25))
+                        Text("\u{00B7}")
+                            .font(Theme.Typography.captionSmall)
+                            .foregroundStyle(Theme.Colors.textTertiary)
                         Text(round.conditions)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.black.opacity(0.45))
+                            .font(Theme.Typography.captionSmall)
+                            .foregroundStyle(Theme.Colors.textSecondary)
                     }
                     if let notes = round.notes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Image(systemName: "note.text")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(.black.opacity(0.35))
+                            .font(Theme.Typography.captionSmall)
+                            .foregroundStyle(Theme.Colors.textTertiary)
                     }
                 }
             }
@@ -465,10 +470,10 @@ struct RoundsView: View {
             Spacer()
 
             Image(systemName: "chevron.right")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.black.opacity(0.22))
+                .font(Theme.Typography.captionSmall)
+                .foregroundStyle(Theme.Colors.textTertiary)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, 14)
     }
 }
@@ -484,12 +489,11 @@ private struct ChartFilterSheet: View {
     let availableConditions: [String]
 
     @Environment(\.dismiss) private var dismiss
-    private let cr: CGFloat = 13
 
     var body: some View {
         NavigationStack {
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
 
                     filterSection(title: "Rounds") {
                         singleSelectRow(
@@ -529,33 +533,34 @@ private struct ChartFilterSheet: View {
                         pillGrid(options: availableConditions, selected: $filter.conditions)
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 40)
+                .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                .padding(.top, Theme.Spacing.xs)
+                .padding(.bottom, Theme.Spacing.xxxl)
             }
             .navigationTitle("Chart Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Reset") {
-                        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        withAnimation(Theme.Animation.snappy) {
                             filter = RoundsView.ChartFilter()
                         }
                     }
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.45))
+                    .font(Theme.Typography.bodyMedium)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") { dismiss() }
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.bodySemibold)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                 }
             }
-            .background(Color(red: 0.97, green: 0.97, blue: 0.98).ignoresSafeArea())
+            .background(Theme.Colors.canvas.ignoresSafeArea())
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(20)
+        .presentationCornerRadius(Theme.Spacing.lg)
+        .interactiveDismissDisabled(false)
     }
 
     // MARK: Section wrapper
@@ -563,8 +568,9 @@ private struct ChartFilterSheet: View {
     private func filterSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title.uppercased())
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.black.opacity(0.35))
+                .font(Theme.Typography.captionSmall)
+                .fontWeight(.semibold)
+                .foregroundStyle(Theme.Colors.textTertiary)
                 .tracking(0.8)
             content()
         }
@@ -577,22 +583,23 @@ private struct ChartFilterSheet: View {
         selected: T,
         onSelect: @escaping (T) -> Void
     ) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: Theme.Spacing.xs) {
             ForEach(Array(options.enumerated()), id: \.offset) { _, pair in
                 let isSelected = pair.0 == selected
-                Button { withAnimation(.spring(response: 0.24, dampingFraction: 0.82)) { onSelect(pair.0) } } label: {
+                Button { withAnimation(Theme.Animation.snappy) { onSelect(pair.0) } } label: {
                     Text(pair.1)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(isSelected ? .white : .black)
+                        .font(Theme.Typography.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(isSelected ? .white : Theme.Colors.textPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 38)
                         .background(
                             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(isSelected ? Color.black : Color.black.opacity(0.06))
+                                .fill(isSelected ? Theme.Colors.textPrimary : Theme.Colors.whisperBorder)
                         )
                 }
-                .buttonStyle(.plain)
-                .animation(.spring(response: 0.24, dampingFraction: 0.82), value: selected)
+                .buttonStyle(ScorlyPressStyle())
+                .animation(Theme.Animation.snappy, value: selected)
             }
         }
     }
@@ -600,28 +607,29 @@ private struct ChartFilterSheet: View {
     // MARK: Multi-select pill grid
 
     private func pillGrid(options: [String], selected: Binding<Set<String>>) -> some View {
-        let cols = [GridItem(.adaptive(minimum: 90), spacing: 8)]
-        return LazyVGrid(columns: cols, alignment: .leading, spacing: 8) {
+        let cols = [GridItem(.adaptive(minimum: 90), spacing: Theme.Spacing.xs)]
+        return LazyVGrid(columns: cols, alignment: .leading, spacing: Theme.Spacing.xs) {
             ForEach(options, id: \.self) { option in
                 let isOn = selected.wrappedValue.contains(option)
                 Button {
-                    withAnimation(.spring(response: 0.24, dampingFraction: 0.82)) {
+                    withAnimation(Theme.Animation.snappy) {
                         if isOn { selected.wrappedValue.remove(option) }
                         else    { selected.wrappedValue.insert(option) }
                     }
                 } label: {
                     Text(option)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(isOn ? .white : .black)
+                        .font(Theme.Typography.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(isOn ? .white : Theme.Colors.textPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 36)
                         .background(
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                .fill(isOn ? Color.black : Color.black.opacity(0.06))
+                                .fill(isOn ? Theme.Colors.textPrimary : Theme.Colors.whisperBorder)
                         )
                 }
-                .buttonStyle(.plain)
-                .animation(.spring(response: 0.24, dampingFraction: 0.82), value: isOn)
+                .buttonStyle(ScorlyPressStyle())
+                .animation(Theme.Animation.snappy, value: isOn)
             }
         }
     }

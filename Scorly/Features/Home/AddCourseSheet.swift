@@ -6,15 +6,29 @@
 import SwiftUI
 
 struct AddCourseSheet: View {
-    @Environment(\.dismiss) private var dismiss
+    enum PresentationStyle {
+        case sheet
+        case embedded
+    }
+
+    var onDismiss: () -> Void
     var onSave: (Course) -> Void
+    var presentationStyle: PresentationStyle = .sheet
+    var isVisible: Bool = true
+    var existingCourse: Course? = nil
+    var showsPreviewHeader: Bool = true
 
     // Course info
     @State private var name     = ""
     @State private var location = ""
 
     // Theme
-    @State private var selectedTheme = 0
+    @State private var selectedPresetTheme = "Forest"
+    @State private var usesCustomTheme = false
+    @State private var customThemeColor = Color(red: 0.10, green: 0.48, blue: 0.42)
+    @State private var customThemeSecondaryColor = Color(red: 0.32, green: 0.82, blue: 0.72)
+    @State private var usesCustomGradient = false
+    @State private var isThemeCardExpanded = false
 
     // Tees — dynamic list
     @State private var tees: [TeeInput] = [
@@ -28,6 +42,7 @@ struct AddCourseSheet: View {
     @State private var expandedHole: Int? = nil
     @State private var isSaving = false
     @State private var saveErrorMessage: String?
+    @State private var dismissButtonRotation: Double = 0
 
     static let themes: [(name: String, colors: [Color])] = [
         ("Forest",   [Color(red: 0.03, green: 0.25, blue: 0.09), Color(red: 0.30, green: 0.68, blue: 0.22)]),
@@ -40,6 +55,113 @@ struct AddCourseSheet: View {
         ("Mint",     [Color(red: 0.08, green: 0.48, blue: 0.42), Color(red: 0.32, green: 0.82, blue: 0.72)]),
         ("Noir",     [Color(red: 0.08, green: 0.08, blue: 0.10), Color(red: 0.28, green: 0.28, blue: 0.32)]),
     ]
+
+    static let themePresets: [String] = ["Forest", "Ocean", "Dusk", "Desert", "Ember", "Mint"]
+
+    init(
+        onDismiss: @escaping () -> Void,
+        onSave: @escaping (Course) -> Void,
+        presentationStyle: PresentationStyle = .sheet,
+        isVisible: Bool = true,
+        existingCourse: Course? = nil,
+        showsPreviewHeader: Bool = true
+    ) {
+        self.onDismiss = onDismiss
+        self.onSave = onSave
+        self.presentationStyle = presentationStyle
+        self.isVisible = isVisible
+        self.existingCourse = existingCourse
+        self.showsPreviewHeader = showsPreviewHeader
+
+        let defaultTheme = Self.themes.first?.colors ?? [Color(red: 0.03, green: 0.25, blue: 0.09), Color(red: 0.30, green: 0.68, blue: 0.22)]
+        let accentColors = existingCourse?.accentColors ?? defaultTheme
+        let primaryColor = accentColors.first ?? defaultTheme[0]
+        let secondaryColor = accentColors.dropFirst().first ?? primaryColor
+        let matchedPreset = Self.matchedPresetThemeName(for: accentColors)
+        let isCustomTheme = existingCourse != nil && matchedPreset == nil
+        let isCustomGradient = isCustomTheme && !Self.colorsApproximatelyEqual(primaryColor, secondaryColor)
+
+        _name = State(initialValue: existingCourse?.name ?? "")
+        _location = State(initialValue: existingCourse?.location ?? "")
+        _selectedPresetTheme = State(initialValue: matchedPreset ?? "Forest")
+        _usesCustomTheme = State(initialValue: isCustomTheme)
+        _customThemeColor = State(initialValue: primaryColor)
+        _customThemeSecondaryColor = State(initialValue: isCustomGradient ? secondaryColor : primaryColor)
+        _usesCustomGradient = State(initialValue: isCustomGradient)
+        _tees = State(initialValue: existingCourse?.tees.map {
+            TeeInput(
+                databaseId: $0.databaseId,
+                name: $0.name,
+                rating: String(format: "%.1f", $0.rating),
+                slope: "\($0.slope)"
+            )
+        } ?? [
+            TeeInput(name: "", rating: "", slope: ""),
+        ])
+        _holeInputs = State(initialValue: existingCourse?.holes.map { hole in
+            HoleInput(
+                number: hole.number,
+                par: hole.par,
+                handicap: hole.handicap,
+                yardages: hole.yardages.map { "\($0)" }
+            )
+        } ?? (1...18).map { HoleInput(number: $0, yardages: [""]) })
+    }
+
+    private var horizontalCardInset: CGFloat {
+        presentationStyle == .sheet ? Theme.Spacing.pageHorizontal : 0
+    }
+
+    private var previewCardHeight: CGFloat? {
+        presentationStyle == .embedded ? 212 : nil
+    }
+
+    private var selectedThemeColors: [Color] {
+        if usesCustomTheme {
+            return usesCustomGradient ? [customThemeColor, customThemeSecondaryColor] : [customThemeColor, customThemeColor]
+        }
+
+        return Self.themes.first(where: { $0.name == selectedPresetTheme })?.colors ?? Self.themes[0].colors
+    }
+
+    private var themeCardExpandedHeight: CGFloat {
+        usesCustomGradient ? 252 : 208
+    }
+
+    private var selectedThemeLabel: String {
+        usesCustomTheme ? (usesCustomGradient ? "Custom Gradient" : "Custom Color") : selectedPresetTheme
+    }
+
+    private var selectedThemeStorageValue: String {
+        guard usesCustomTheme else { return selectedPresetTheme }
+
+        if usesCustomGradient {
+            return "CustomGradient:\(Self.hexString(for: customThemeColor))-\(Self.hexString(for: customThemeSecondaryColor))"
+        }
+
+        return "CustomSolid:\(Self.hexString(for: customThemeColor))"
+    }
+
+    private var customThemeBinding: Binding<Color> {
+        Binding(
+            get: { customThemeColor },
+            set: { newValue in
+                usesCustomTheme = true
+                customThemeColor = newValue
+            }
+        )
+    }
+
+    private var customThemeSecondaryBinding: Binding<Color> {
+        Binding(
+            get: { customThemeSecondaryColor },
+            set: { newValue in
+                usesCustomTheme = true
+                usesCustomGradient = true
+                customThemeSecondaryColor = newValue
+            }
+        )
+    }
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -80,46 +202,13 @@ struct AddCourseSheet: View {
     }
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 0) {
-                sheetHeader
-
-                VStack(alignment: .leading, spacing: 0) {
-                    sectionLabel("COLOR THEME")
-                    themeGrid
-
-                    sectionLabel("COURSE INFO")
-                    infoCard
-
-                    sectionLabel("TEES")
-                    teesSection
-
-                    sectionLabel("SCORECARD")
-                    scorecardSection
-
-                    // Save button (inline)
-                    Button(action: save) {
-                        Text(isSaving ? "Saving..." : "Add Course")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(canSave ? Color.black : Color.black.opacity(0.28))
-                            )
-                    }
-                    .disabled(!canSave || isSaving)
-                    .buttonStyle(.plain)
-                    .padding(.top, 32)
-                    .padding(.bottom, 48)
-                }
-                .padding(.horizontal, 20)
+        Group {
+            if presentationStyle == .embedded {
+                embeddedContent
+            } else {
+                sheetContent
             }
         }
-        .ignoresSafeArea(edges: .top)
-        .scrollDismissesKeyboard(.interactively)
-        .background(Color(red: 0.97, green: 0.97, blue: 0.98))
         .alert("Unable to Save Course", isPresented: saveErrorBinding) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -127,12 +216,119 @@ struct AddCourseSheet: View {
         }
     }
 
+    private var sheetContent: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            formContent
+        }
+        .ignoresSafeArea(edges: .top)
+        .scrollDismissesKeyboard(.interactively)
+        .background(Theme.Colors.canvas.ignoresSafeArea())
+    }
+
+    private var embeddedContent: some View {
+        formContent
+            .padding(.bottom, Theme.Spacing.huge)
+    }
+
+    private var formContent: some View {
+        let sectionIndexOffset = showsPreviewHeader ? 1 : 0
+
+        return VStack(alignment: .leading, spacing: 0) {
+            if showsPreviewHeader {
+                previewHeader
+                    .sequencedVisibility(
+                        index: 0,
+                        isVisible: isVisible,
+                        hiddenOffset: 30,
+                        hiddenScale: 0.998,
+                        enterAnimation: Theme.Animation.bouncy,
+                        exitAnimation: Theme.Animation.tabExit,
+                        enterStagger: 0.045,
+                        exitStagger: 0.03
+                    )
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                sectionGroup(index: sectionIndexOffset, label: "COLOR THEME") {
+                    themeCard
+                }
+
+                sectionGroup(index: sectionIndexOffset + 1, label: "COURSE INFO") {
+                    infoCard
+                }
+
+                sectionGroup(index: sectionIndexOffset + 2, label: "TEES") {
+                    teesSection
+                }
+
+                sectionGroup(index: sectionIndexOffset + 3, label: "SCORECARD") {
+                    scorecardSection
+                }
+
+                saveButton
+                    .sequencedVisibility(
+                        index: sectionIndexOffset + 4,
+                        isVisible: isVisible,
+                        hiddenOffset: 26,
+                        hiddenScale: 0.998,
+                        enterAnimation: Theme.Animation.bouncy,
+                        exitAnimation: Theme.Animation.tabExit,
+                        enterStagger: 0.05,
+                        exitStagger: 0.03
+                    )
+            }
+            .padding(.horizontal, horizontalCardInset)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background {
+            if presentationStyle == .sheet {
+                Theme.Colors.canvas.ignoresSafeArea()
+            } else {
+                Color.clear
+            }
+        }
+    }
+
+    private func sectionGroup<Content: View>(index: Int, label: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionLabel(label)
+            content()
+        }
+        .sequencedVisibility(
+            index: index,
+            isVisible: isVisible,
+            hiddenOffset: 28,
+            hiddenScale: 0.998,
+            enterAnimation: Theme.Animation.bouncy,
+            exitAnimation: Theme.Animation.tabExit,
+            enterStagger: 0.05,
+            exitStagger: 0.03
+        )
+    }
+
+    private var saveButton: some View {
+        Button(action: save) {
+            Text(isSaving ? "Saving..." : (existingCourse == nil ? "Add Course" : "Save Changes"))
+                .font(Theme.Typography.title3)
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                        .fill(canSave ? Theme.Colors.accent : Theme.Colors.accent.opacity(0.28))
+                )
+        }
+        .disabled(!canSave || isSaving)
+        .buttonStyle(ScorlyPressStyle())
+        .padding(.top, Theme.Spacing.xxl)
+    }
+
     // MARK: - Header (live preview)
 
-    private var sheetHeader: some View {
+    private var previewHeader: some View {
         ZStack(alignment: .topTrailing) {
             LinearGradient(
-                colors: Self.themes[selectedTheme].colors,
+                colors: selectedThemeColors,
                 startPoint: .leading, endPoint: .trailing
             )
             .overlay(
@@ -142,29 +338,40 @@ struct AddCourseSheet: View {
                 )
             )
 
-            Button { dismiss() } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .frame(width: 28, height: 28)
-                    .background(.white.opacity(0.22), in: Circle())
+            if presentationStyle == .sheet {
+                Button {
+                    withAnimation(Theme.Animation.snappy) {
+                        dismissButtonRotation += 90
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                        onDismiss()
+                    }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .frame(width: 28, height: 28)
+                        .background(.white.opacity(0.22), in: Circle())
+                        .rotationEffect(.degrees(dismissButtonRotation))
+                }
+                .padding(.top, 56)
+                .padding(.trailing, Theme.Spacing.md)
             }
-            .padding(.top, 56).padding(.trailing, 16)
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(name.isEmpty ? "New Course" : name)
-                    .font(.system(size: 28, weight: .bold))
+                    .font(Theme.Typography.largeTitle)
                     .foregroundStyle(.white)
                     .minimumScaleFactor(0.75)
                     .lineLimit(1)
-                HStack(spacing: 12) {
+                HStack(spacing: Theme.Spacing.sm) {
                     if !location.isEmpty {
                         Text(location)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(Theme.Typography.caption)
                             .foregroundStyle(.white.opacity(0.70))
                     } else {
                         Text("Add location")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(Theme.Typography.caption)
                             .foregroundStyle(.white.opacity(0.50))
                     }
                     Spacer()
@@ -175,64 +382,204 @@ struct AddCourseSheet: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 22)
-            .padding(.top, 80)
+            .padding(.top, presentationStyle == .sheet ? 80 : 32)
             .padding(.bottom, 22)
         }
         .frame(maxWidth: .infinity)
-        .animation(.easeInOut(duration: 0.22), value: selectedTheme)
+        .frame(height: previewCardHeight)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .strokeBorder(.white.opacity(0.15), lineWidth: 1)
+        )
+        .themeShadow(Theme.Shadow.prominent)
+        .padding(.horizontal, horizontalCardInset)
+        .padding(.top, presentationStyle == .sheet ? 0 : Theme.Spacing.sm)
+        .animation(Theme.Animation.smooth, value: selectedThemeStorageValue)
     }
 
     // MARK: - Section label
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(.black.opacity(0.32))
+            .font(Theme.Typography.captionSmall)
+            .foregroundStyle(Theme.Colors.textTertiary)
             .kerning(1.0)
             .padding(.top, 26)
-            .padding(.bottom, 8)
+            .padding(.bottom, Theme.Spacing.xs)
     }
 
     // MARK: - Color theme grid
 
-    private var themeGrid: some View {
-        let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
-        return LazyVGrid(columns: columns, spacing: 10) {
-            ForEach(0..<Self.themes.count, id: \.self) { i in
-                let theme = Self.themes[i]
-                let isSelected = selectedTheme == i
-                Button {
-                    withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
-                        selectedTheme = i
-                    }
-                } label: {
-                    ZStack(alignment: .bottomLeading) {
-                        LinearGradient(
-                            colors: theme.colors,
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                        Text(theme.name)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.white.opacity(0.88))
-                            .padding(.horizontal, 8).padding(.bottom, 7)
-                    }
-                    .frame(height: 58)
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(isSelected ? Color.white : Color.clear, lineWidth: 2.5)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(isSelected ? Color.black.opacity(0.20) : Color.clear, lineWidth: 1)
-                    )
-                    .scaleEffect(isSelected ? 1.0 : 0.96)
-                    .shadow(color: isSelected ? .black.opacity(0.18) : .black.opacity(0.06), radius: isSelected ? 8 : 4, y: 3)
+    private var themeCard: some View {
+        VStack(spacing: 0) {
+            Button {
+                withAnimation(Theme.Animation.smooth) {
+                    isThemeCardExpanded.toggle()
                 }
-                .buttonStyle(.plain)
+            } label: {
+                HStack(spacing: Theme.Spacing.md) {
+                    RoundedRectangle(cornerRadius: Theme.Radius.sm + 2, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: selectedThemeColors,
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 54, height: 54)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: Theme.Radius.sm + 2, style: .continuous)
+                                .strokeBorder(.white.opacity(0.22), lineWidth: 1)
+                        )
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(selectedThemeLabel)
+                            .font(Theme.Typography.bodySemibold)
+                            .foregroundStyle(Theme.Colors.textPrimary)
+                        Text("Choose a preset or open the color wheel.")
+                            .font(Theme.Typography.caption)
+                            .foregroundStyle(Theme.Colors.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.Colors.textSecondary)
+                        .rotationEffect(.degrees(isThemeCardExpanded ? 180 : 0))
+                }
+                .padding(Theme.Spacing.md)
             }
+            .buttonStyle(ScorlyPressStyle())
+
+            VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+                Divider()
+
+                HStack(spacing: Theme.Spacing.sm) {
+                    ForEach(Self.themePresets, id: \.self) { presetName in
+                        let presetColors = Self.themes.first(where: { $0.name == presetName })?.colors ?? selectedThemeColors
+                        let isSelected = !usesCustomTheme && selectedPresetTheme == presetName
+
+                        Button {
+                            withAnimation(Theme.Animation.bouncy) {
+                                usesCustomTheme = false
+                                selectedPresetTheme = presetName
+                            }
+                        } label: {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: presetColors,
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 34, height: 34)
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(isSelected ? Theme.Colors.accent : .white.opacity(0.85), lineWidth: isSelected ? 2.5 : 1)
+                                )
+                                .scaleEffect(isSelected ? 1.06 : 1)
+                        }
+                        .buttonStyle(ScorlyPressStyle())
+                    }
+                }
+
+                HStack(spacing: Theme.Spacing.sm) {
+                    Label(usesCustomGradient ? "Primary" : "Color", systemImage: "paintpalette")
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
+
+                    Spacer()
+
+                    ColorPicker("", selection: customThemeBinding, supportsOpacity: false)
+                        .labelsHidden()
+                        .frame(width: 34, height: 34)
+                        .background(
+                            Circle()
+                                .fill(customThemeColor)
+                        )
+                        .overlay(
+                            Circle()
+                                .strokeBorder(usesCustomTheme ? Theme.Colors.accent : Theme.Colors.whisperBorder, lineWidth: usesCustomTheme ? 2.5 : 1)
+                        )
+                }
+
+                if usesCustomGradient {
+                    HStack(spacing: Theme.Spacing.md) {
+                        Label("Secondary", systemImage: "circle.lefthalf.filled")
+                            .font(Theme.Typography.caption)
+                            .foregroundStyle(Theme.Colors.textSecondary)
+
+                        Spacer()
+
+                        ColorPicker("", selection: customThemeSecondaryBinding, supportsOpacity: false)
+                            .labelsHidden()
+                            .frame(width: 34, height: 34)
+                            .background(
+                                Circle()
+                                    .fill(customThemeSecondaryColor)
+                            )
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(Theme.Colors.accent, lineWidth: 2.5)
+                            )
+                    }
+                }
+
+                HStack(spacing: Theme.Spacing.sm) {
+                    Button {
+                        withAnimation(Theme.Animation.snappy) {
+                            usesCustomTheme = true
+                            usesCustomGradient = false
+                        }
+                    } label: {
+                        Text("Solid")
+                            .font(Theme.Typography.caption)
+                            .foregroundStyle(usesCustomTheme && !usesCustomGradient ? Color.white : Theme.Colors.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                                    .fill(usesCustomTheme && !usesCustomGradient ? Theme.Colors.accent : Theme.Colors.textPrimary.opacity(0.06))
+                            )
+                    }
+                    .buttonStyle(ScorlyPressStyle())
+
+                    Button {
+                        withAnimation(Theme.Animation.snappy) {
+                            usesCustomTheme = true
+                            usesCustomGradient = true
+                        }
+                    } label: {
+                        Text("Gradient")
+                            .font(Theme.Typography.caption)
+                            .foregroundStyle(usesCustomTheme && usesCustomGradient ? Color.white : Theme.Colors.textSecondary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 32)
+                            .background(
+                                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                                    .fill(usesCustomTheme && usesCustomGradient ? Theme.Colors.accent : Theme.Colors.textPrimary.opacity(0.06))
+                            )
+                    }
+                    .buttonStyle(ScorlyPressStyle())
+                }
+            }
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.bottom, Theme.Spacing.md)
+            .frame(maxHeight: isThemeCardExpanded ? themeCardExpandedHeight : 0, alignment: .top)
+            .clipped()
+            .opacity(isThemeCardExpanded ? 1 : 0)
         }
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                .strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1)
+        )
+        .themeShadow(Theme.Shadow.subtle)
+        .animation(Theme.Animation.smooth, value: isThemeCardExpanded)
     }
 
     // MARK: - Info card
@@ -241,33 +588,33 @@ struct AddCourseSheet: View {
         VStack(spacing: 0) {
             formRow(label: "Name") {
                 TextField("e.g. Pebble Beach", text: $name)
-                    .font(.system(size: 15))
+                    .font(Theme.Typography.body)
                     .multilineTextAlignment(.trailing)
             }
-            Divider().padding(.leading, 16)
+            Divider().padding(.leading, Theme.Spacing.md)
             formRow(label: "Location") {
                 TextField("City, State", text: $location)
-                    .font(.system(size: 15))
+                    .font(Theme.Typography.body)
                     .multilineTextAlignment(.trailing)
             }
         }
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     private func formRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.black)
+                .font(Theme.Typography.bodyMedium)
+                .foregroundStyle(Theme.Colors.textPrimary)
             Spacer()
             content()
-                .foregroundStyle(.black.opacity(0.55))
+                .foregroundStyle(Theme.Colors.textSecondary)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.sm + 2)
     }
 
     // MARK: - Tees section
@@ -281,45 +628,45 @@ struct AddCourseSheet: View {
                 Text("SLOPE").frame(width: 50, alignment: .trailing)
             }
             .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(.black.opacity(0.35))
-            .padding(.horizontal, 16).padding(.vertical, 10)
+            .foregroundStyle(Theme.Colors.textTertiary)
+            .padding(.horizontal, Theme.Spacing.md).padding(.vertical, Theme.Spacing.xs + 2)
 
-            Divider().padding(.horizontal, 16)
+            Divider().padding(.horizontal, Theme.Spacing.md)
 
             // Tee rows
             ForEach($tees) { $tee in
                 HStack(spacing: 0) {
                     TextField("Tee name", text: $tee.name)
-                        .font(.system(size: 15))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.body)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     TextField("72.0", text: $tee.rating)
-                        .font(.system(size: 15))
-                        .foregroundStyle(.black.opacity(0.65))
+                        .font(Theme.Typography.body)
+                        .foregroundStyle(Theme.Colors.textSecondary)
                         .multilineTextAlignment(.center)
                         .keyboardType(.decimalPad)
                         .frame(width: 62)
                     TextField("125", text: $tee.slope)
-                        .font(.system(size: 15))
-                        .foregroundStyle(.black.opacity(0.65))
+                        .font(Theme.Typography.body)
+                        .foregroundStyle(Theme.Colors.textSecondary)
                         .multilineTextAlignment(.trailing)
                         .keyboardType(.numberPad)
                         .frame(width: 50)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 13)
+                .padding(.horizontal, Theme.Spacing.md)
+                .padding(.vertical, Theme.Spacing.sm)
 
                 if tee.id != tees.last?.id {
-                    Divider().padding(.leading, 16)
+                    Divider().padding(.leading, Theme.Spacing.md)
                 }
             }
 
-            Divider().padding(.horizontal, 16)
+            Divider().padding(.horizontal, Theme.Spacing.md)
 
             // Add / Remove tee buttons
             HStack {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.18)) {
+                    withAnimation(Theme.Animation.smooth) {
                         tees.append(TeeInput(name: "", rating: "", slope: ""))
                         // Grow yardage arrays to match new tee count
                         for i in holeInputs.indices {
@@ -331,19 +678,19 @@ struct AddCourseSheet: View {
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(Theme.Typography.caption)
                         Text("Add Tee")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(Theme.Typography.caption)
                     }
-                    .foregroundStyle(.black.opacity(0.55))
+                    .foregroundStyle(Theme.Colors.textSecondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ScorlyPressStyle())
 
                 Spacer()
 
                 if tees.count > 1 {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.18)) {
+                        withAnimation(Theme.Animation.smooth) {
                             tees.removeLast()
                             // Trim yardages on holes if we removed a tee
                             for i in holeInputs.indices {
@@ -355,22 +702,22 @@ struct AddCourseSheet: View {
                     } label: {
                         HStack(spacing: 5) {
                             Image(systemName: "minus.circle.fill")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(Theme.Typography.caption)
                             Text("Remove")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(Theme.Typography.caption)
                         }
-                        .foregroundStyle(.black.opacity(0.35))
+                        .foregroundStyle(Theme.Colors.textTertiary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ScorlyPressStyle())
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, Theme.Spacing.md)
+            .padding(.vertical, Theme.Spacing.sm)
         }
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     // MARK: - Scorecard section
@@ -390,12 +737,12 @@ struct AddCourseSheet: View {
                 }
             }
             .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(.black.opacity(0.35))
+            .foregroundStyle(Theme.Colors.textTertiary)
             .kerning(0.3)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, Theme.Spacing.sm)
+            .padding(.vertical, Theme.Spacing.xs + 2)
 
-            Divider().padding(.horizontal, 12)
+            Divider().padding(.horizontal, Theme.Spacing.sm)
 
             // Hole rows
             ForEach(0..<18, id: \.self) { idx in
@@ -404,42 +751,41 @@ struct AddCourseSheet: View {
                 VStack(spacing: 0) {
                     // Summary row — always visible, tappable
                     Button {
-                        withAnimation(.easeInOut(duration: 0.18)) {
+                        withAnimation(Theme.Animation.smooth) {
                             expandedHole = isExpanded ? nil : idx
                         }
                     } label: {
                         holeCompactRow(idx: idx)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ScorlyPressStyle())
 
                     // Expanded edit row
-                    if isExpanded {
-                        holeEditView(idx: idx)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
+                    holeEditView(idx: idx)
+                        .frame(maxHeight: isExpanded ? holeEditHeight : 0, alignment: .top)
+                        .clipped()
                 }
 
                 // Front 9 / Back 9 subtotals
                 if idx == 8 {
-                    Divider().padding(.horizontal, 12)
+                    Divider().padding(.horizontal, Theme.Spacing.sm)
                     subtotalRow(label: "OUT", range: 0..<9)
                 }
 
                 if idx < 17 || idx == 17 {
-                    Divider().padding(.horizontal, 12).opacity(idx == 8 ? 0 : 0.5)
+                    Divider().padding(.horizontal, Theme.Spacing.sm).opacity(idx == 8 ? 0 : 0.5)
                 }
             }
 
-            Divider().padding(.horizontal, 12)
+            Divider().padding(.horizontal, Theme.Spacing.sm)
             subtotalRow(label: "IN", range: 9..<18)
 
-            Divider().padding(.horizontal, 12)
+            Divider().padding(.horizontal, Theme.Spacing.sm)
             subtotalRow(label: "TOT", range: 0..<18)
         }
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous).strokeBorder(.black.opacity(0.06), lineWidth: 1))
-        .shadow(color: .black.opacity(0.04), radius: 10, y: 4)
+        .background(Theme.Colors.surface)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).strokeBorder(Theme.Colors.whisperBorder, lineWidth: 1))
+        .themeShadow(Theme.Shadow.subtle)
     }
 
     private func teeAbbr(_ index: Int) -> String {
@@ -456,56 +802,69 @@ struct AddCourseSheet: View {
         let handicapText = (1...18).contains(hole.handicap) ? "\(hole.handicap)" : "—"
 
         return HStack(spacing: 0) {
-            Text("\(hole.number)")
-                .font(.system(size: 14, weight: isExpanded ? .bold : .medium))
-                .foregroundStyle(.black)
-                .frame(width: 38, alignment: .leading)
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isExpanded ? Theme.Colors.accent : Color.clear)
+                    .frame(width: 30, height: 30)
+                    .scaleEffect(isExpanded ? 1 : 0.86)
+
+                Text("\(hole.number)")
+                    .font(.system(size: 14, weight: isExpanded ? .bold : .medium))
+                    .foregroundStyle(isExpanded ? Color.white : Theme.Colors.textPrimary)
+                    .monospacedDigit()
+            }
+            .frame(width: 38, alignment: .leading)
+            .animation(Theme.Animation.bouncy, value: isExpanded)
             Text(parText)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.black.opacity(0.65))
+                .foregroundStyle(Theme.Colors.textSecondary)
                 .frame(width: 34, alignment: .center)
             Text(handicapText)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(.black.opacity(0.45))
+                .foregroundStyle(Theme.Colors.textTertiary)
                 .frame(width: 34, alignment: .center)
             ForEach(0..<tees.count, id: \.self) { t in
                 let raw = t < hole.yardages.count ? hole.yardages[t] : ""
                 let yds = Int(raw) ?? 0
                 Text(yds > 0 ? "\(yds)" : "—")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(yds > 0 ? .black.opacity(0.65) : .black.opacity(0.20))
+                    .foregroundStyle(yds > 0 ? Theme.Colors.textSecondary : Theme.Colors.textTertiary.opacity(0.5))
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(isExpanded ? Color.black.opacity(0.03) : Color.clear)
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.xs + 2)
+        .background(isExpanded ? Theme.Colors.textPrimary.opacity(0.03) : Color.clear)
+    }
+
+    private var holeEditHeight: CGFloat {
+        112 + CGFloat(tees.count) * 34
     }
 
     private func holeEditView(idx: Int) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: Theme.Spacing.xs + 2) {
             // Par picker
             HStack {
                 Text("Par")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.55))
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                 Spacer()
-                HStack(spacing: 6) {
+                HStack(spacing: Theme.Spacing.xxs + 2) {
                     ForEach([3, 4, 5], id: \.self) { p in
                         Button {
                             holeInputs[idx].par = p
                         } label: {
                             Text("\(p)")
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(holeInputs[idx].par == p ? .white : .black)
+                                .foregroundStyle(holeInputs[idx].par == p ? .white : Theme.Colors.textPrimary)
                                 .frame(width: 38, height: 34)
                                 .background(
-                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                        .fill(holeInputs[idx].par == p ? Color.black : Color.black.opacity(0.06))
+                                    RoundedRectangle(cornerRadius: Theme.Radius.sm - 1, style: .continuous)
+                                        .fill(holeInputs[idx].par == p ? Theme.Colors.accent : Theme.Colors.textPrimary.opacity(0.06))
                                 )
                         }
-                        .buttonStyle(.plain)
-                        .animation(.easeInOut(duration: 0.12), value: holeInputs[idx].par)
+                        .buttonStyle(ScorlyPressStyle())
+                        .animation(Theme.Animation.snappy, value: holeInputs[idx].par)
                     }
                 }
             }
@@ -513,8 +872,8 @@ struct AddCourseSheet: View {
             // Handicap
             HStack {
                 Text("Handicap")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.black.opacity(0.55))
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                 Spacer()
                 HStack(spacing: 0) {
                     Button {
@@ -526,15 +885,15 @@ struct AddCourseSheet: View {
                     } label: {
                         Image(systemName: "minus")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.black.opacity(0.55))
+                            .foregroundStyle(Theme.Colors.textSecondary)
                             .frame(width: 28, height: 28)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.06)))
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Theme.Colors.textPrimary.opacity(0.06)))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ScorlyPressStyle())
 
                     Text((1...18).contains(holeInputs[idx].handicap) ? "\(holeInputs[idx].handicap)" : "—")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.bodySemibold)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                         .monospacedDigit()
                         .frame(width: 34, alignment: .center)
 
@@ -547,11 +906,11 @@ struct AddCourseSheet: View {
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(.black.opacity(0.55))
+                            .foregroundStyle(Theme.Colors.textSecondary)
                             .frame(width: 28, height: 28)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(Color.black.opacity(0.06)))
+                            .background(RoundedRectangle(cornerRadius: 6).fill(Theme.Colors.textPrimary.opacity(0.06)))
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(ScorlyPressStyle())
                 }
             }
 
@@ -559,24 +918,25 @@ struct AddCourseSheet: View {
             ForEach(0..<tees.count, id: \.self) { t in
                 HStack {
                     Text(tees[t].name.isEmpty ? "Tee \(t+1)" : tees[t].name)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.black.opacity(0.55))
+                        .font(Theme.Typography.caption)
+                        .foregroundStyle(Theme.Colors.textSecondary)
                         .lineLimit(1)
                     Spacer()
                     // Ensure yardages array is big enough
                     let binding = yardageBinding(hole: idx, tee: t)
                     TextField("yds", text: binding)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(.black)
+                        .font(Theme.Typography.bodyMedium)
+                        .foregroundStyle(Theme.Colors.textPrimary)
                         .multilineTextAlignment(.trailing)
                         .keyboardType(.numberPad)
                         .frame(width: 70)
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color.black.opacity(0.02))
+        .padding(.horizontal, Theme.Spacing.md)
+        .padding(.vertical, Theme.Spacing.sm)
+        .background(Theme.Colors.textPrimary.opacity(0.02))
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     /// Returns a Binding<String> for the yardage of hole at `hole` index, tee at `tee` index.
@@ -613,11 +973,70 @@ struct AddCourseSheet: View {
             }
         }
         .font(.system(size: 12, weight: .bold))
-        .foregroundStyle(.black)
+        .foregroundStyle(Theme.Colors.textPrimary)
         .monospacedDigit()
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color.black.opacity(0.03))
+        .padding(.horizontal, Theme.Spacing.sm)
+        .padding(.vertical, Theme.Spacing.xs + 2)
+        .background(Theme.Colors.textPrimary.opacity(0.03))
+    }
+
+    private static func hexString(for color: Color) -> String {
+        #if canImport(UIKit)
+        let uiColor = UIColor(color)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+
+        if uiColor.getRed(&red, green: &green, blue: &blue, alpha: &alpha) {
+            return String(
+                format: "%02X%02X%02X",
+                Int(red * 255),
+                Int(green * 255),
+                Int(blue * 255)
+            )
+        }
+        #endif
+
+        return "0B1215"
+    }
+
+    private static func matchedPresetThemeName(for colors: [Color]) -> String? {
+        guard colors.count >= 2 else { return nil }
+
+        return themes.first(where: { theme in
+            guard theme.colors.count >= 2 else { return false }
+            return colorsApproximatelyEqual(theme.colors[0], colors[0]) &&
+                colorsApproximatelyEqual(theme.colors[1], colors[1])
+        })?.name
+    }
+
+    private static func colorsApproximatelyEqual(_ lhs: Color, _ rhs: Color) -> Bool {
+        #if canImport(UIKit)
+        let left = UIColor(lhs)
+        let right = UIColor(rhs)
+        var leftRed: CGFloat = 0
+        var leftGreen: CGFloat = 0
+        var leftBlue: CGFloat = 0
+        var leftAlpha: CGFloat = 0
+        var rightRed: CGFloat = 0
+        var rightGreen: CGFloat = 0
+        var rightBlue: CGFloat = 0
+        var rightAlpha: CGFloat = 0
+
+        guard left.getRed(&leftRed, green: &leftGreen, blue: &leftBlue, alpha: &leftAlpha),
+              right.getRed(&rightRed, green: &rightGreen, blue: &rightBlue, alpha: &rightAlpha) else {
+            return false
+        }
+
+        let threshold: CGFloat = 0.03
+        return abs(leftRed - rightRed) < threshold &&
+            abs(leftGreen - rightGreen) < threshold &&
+            abs(leftBlue - rightBlue) < threshold &&
+            abs(leftAlpha - rightAlpha) < threshold
+        #else
+        return false
+        #endif
     }
 
     // MARK: - Save
@@ -629,7 +1048,7 @@ struct AddCourseSheet: View {
 
         isSaving = true
 
-        let teePayload = tees.compactMap { tee -> (name: String, rating: Double?, slope: Double?, yardage: Int?)? in
+        let teePayload = tees.compactMap { tee -> (databaseId: Int?, name: String, rating: Double?, slope: Double?, yardage: Int?)? in
             guard
                 let rating = Double(tee.rating),
                 let slope = Double(tee.slope)
@@ -643,6 +1062,7 @@ struct AddCourseSheet: View {
             }
 
             return (
+                databaseId: tee.databaseId,
                 name: tee.name.trimmingCharacters(in: .whitespacesAndNewlines),
                 rating: rating,
                 slope: slope,
@@ -662,20 +1082,37 @@ struct AddCourseSheet: View {
 
         Task {
             do {
-                let savedRow = try await DataService.shared.saveCourse(
-                    name: trimmedName,
-                    location: trimmedLocation.isEmpty ? nil : trimmedLocation,
-                    notes: nil,
-                    colorTheme: Self.themes[selectedTheme].name,
-                    tees: teePayload,
-                    holes: holePayload,
-                    teeHoleYardages: teeHoleYardages
-                )
+                let savedRow: CourseRow
+
+                if let courseId = existingCourse?.databaseId {
+                    savedRow = try await DataService.shared.updateCourse(
+                        courseId: courseId,
+                        name: trimmedName,
+                        location: trimmedLocation.isEmpty ? nil : trimmedLocation,
+                        notes: nil,
+                        colorTheme: selectedThemeStorageValue,
+                        tees: teePayload,
+                        holes: holePayload,
+                        teeHoleYardages: teeHoleYardages
+                    )
+                } else {
+                    savedRow = try await DataService.shared.saveCourse(
+                        name: trimmedName,
+                        location: trimmedLocation.isEmpty ? nil : trimmedLocation,
+                        notes: nil,
+                        colorTheme: selectedThemeStorageValue,
+                        tees: teePayload.map { tee in
+                            (name: tee.name, rating: tee.rating, slope: tee.slope, yardage: tee.yardage)
+                        },
+                        holes: holePayload,
+                        teeHoleYardages: teeHoleYardages
+                    )
+                }
 
                 await MainActor.run {
                     isSaving = false
                     onSave(Course(from: savedRow))
-                    dismiss()
+                    onDismiss()
                 }
             } catch {
                 await MainActor.run {

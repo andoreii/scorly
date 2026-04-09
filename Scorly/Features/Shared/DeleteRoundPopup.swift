@@ -9,79 +9,69 @@ struct DeleteRoundPopup: View {
     let onDelete: () -> Void
     let onCancel: () -> Void
 
+    @State private var appeared = false
+
     var body: some View {
         ZStack {
-            // Dim overlay
-            Color.black.opacity(0.45)
+            Color.black.opacity(appeared ? 0.45 : 0)
                 .ignoresSafeArea()
                 .onTapGesture { onCancel() }
+                .animation(Theme.Animation.smooth, value: appeared)
 
-            // Card
             VStack(spacing: 0) {
-                // Icon
                 ZStack {
                     Circle()
-                        .fill(Color(red: 0.88, green: 0.28, blue: 0.24).opacity(0.12))
+                        .fill(Theme.Colors.error.opacity(0.12))
                         .frame(width: 64, height: 64)
                     Image(systemName: "trash.fill")
                         .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(Color(red: 0.88, green: 0.28, blue: 0.24))
+                        .foregroundStyle(Theme.Colors.error)
                 }
                 .padding(.top, 28)
+                .scaleEffect(appeared ? 1 : 0.5)
+                .opacity(appeared ? 1 : 0)
+                .animation(Theme.Animation.bouncy.delay(0.1), value: appeared)
 
-                // Title
                 Text("Delete Round?")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(.black)
-                    .padding(.top, 16)
+                    .font(Theme.Typography.title2)
+                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .padding(.top, Theme.Spacing.md)
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : 8)
+                    .animation(Theme.Animation.smooth.delay(0.15), value: appeared)
 
-                // Message
                 Text("All progress will be permanently lost.")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.black.opacity(0.45))
+                    .font(Theme.Typography.caption)
+                    .foregroundStyle(Theme.Colors.textSecondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, Theme.Spacing.xl)
                     .padding(.top, 6)
+                    .opacity(appeared ? 1 : 0)
+                    .animation(Theme.Animation.smooth.delay(0.2), value: appeared)
 
-                // Buttons
-                HStack(spacing: 12) {
-                    Button(action: onCancel) {
-                        Text("Cancel")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.black)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.black.opacity(0.06))
-                            )
-                    }
-                    .buttonStyle(.plain)
-
-                    Button(action: onDelete) {
-                        Text("Delete")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 50)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color(red: 0.88, green: 0.28, blue: 0.24))
-                            )
-                    }
-                    .buttonStyle(.plain)
+                HStack(spacing: Theme.Spacing.sm) {
+                    ScorlyButton(title: "Cancel", style: .ghost) { onCancel() }
+                    ScorlyButton(title: "Delete", style: .destructive) { onDelete() }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 24)
-                .padding(.bottom, 24)
+                .padding(.horizontal, Theme.Spacing.pageHorizontal)
+                .padding(.top, Theme.Spacing.xl)
+                .padding(.bottom, Theme.Spacing.xl)
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 12)
+                .animation(Theme.Animation.smooth.delay(0.25), value: appeared)
             }
             .frame(width: 300)
             .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(.white)
-                    .shadow(color: .black.opacity(0.18), radius: 30, y: 10)
+                RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
+                    .fill(Theme.Colors.surface)
+                    .themeShadow(Theme.Shadow.prominent)
             )
-            .transition(.scale(scale: 0.88).combined(with: .opacity))
+            .scaleEffect(appeared ? 1 : 0.88)
+            .opacity(appeared ? 1 : 0)
+            .animation(Theme.Animation.smooth, value: appeared)
+        }
+        .onAppear {
+            appeared = true
         }
     }
 }

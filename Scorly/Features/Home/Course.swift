@@ -80,7 +80,11 @@ extension Course {
         self.bestScore = scores.min() ?? 0
     }
 
-    private static func colors(for theme: String?) -> [Color] {
+    static func colors(for theme: String?) -> [Color] {
+        if let theme, let customColors = customColors(for: theme) {
+            return customColors
+        }
+
         switch theme {
         case "Forest":   return [Color(red: 0.03, green: 0.25, blue: 0.09), Color(red: 0.34, green: 0.72, blue: 0.21)]
         case "Ocean":    return [Color(red: 0.14, green: 0.35, blue: 0.72), Color(red: 0.48, green: 0.82, blue: 0.90)]
@@ -93,6 +97,31 @@ extension Course {
         case "Noir":     return [Color(red: 0.12, green: 0.12, blue: 0.14), Color(red: 0.35, green: 0.35, blue: 0.40)]
         default:         return [Color(red: 0.36, green: 0.54, blue: 0.95), Color(red: 0.78, green: 0.89, blue: 1.00)]
         }
+    }
+
+    private static func customColors(for theme: String) -> [Color]? {
+        if theme.hasPrefix("CustomGradient:") {
+            guard let pair = theme.split(separator: ":").last?.split(separator: "-"),
+                  pair.count == 2,
+                  let first = UInt(pair[0], radix: 16),
+                  let second = UInt(pair[1], radix: 16) else {
+                return nil
+            }
+
+            return [Color(hex: first), Color(hex: second)]
+        }
+
+        if theme.hasPrefix("CustomSolid:") || theme.hasPrefix("Custom:") {
+            guard let hex = theme.split(separator: ":").last,
+                  let value = UInt(hex, radix: 16) else {
+                return nil
+            }
+
+            let color = Color(hex: value)
+            return [color, color]
+        }
+
+        return nil
     }
 }
 

@@ -14,6 +14,11 @@ class AuthService {
 
     var isSignedIn: Bool { session != nil }
     var userId: UUID? { session?.user.id }
+    var userEmail: String? { session?.user.email }
+    var userInitial: String {
+        guard let email = session?.user.email, let first = email.first else { return "?" }
+        return String(first).uppercased()
+    }
 
     init() {
         Task { await restoreSession() }
